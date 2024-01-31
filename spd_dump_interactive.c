@@ -148,7 +148,34 @@ int main(int argc, char **argv) {
 			temp = strtok(NULL," ");
 		}
 
-		if (!strncmp(str2[1], "fdl", 3)) {
+		if (!strncmp(str2[1], "send", 3)) {
+			const char* fn; uint32_t addr = 0; char* end; FILE* fi;
+			if (argcount <= 3) { DBG_LOG("fdl FILE addr\n"); continue; }
+
+			fn = str2[2];
+			fi = fopen(fn, "r");
+			if (fi == NULL) { DBG_LOG("File does not exist.\n"); continue; }
+			else fclose(fi);
+
+			end = str2[3];
+			if (!memcmp(end, "ram", 3)) {
+				int a = end[3];
+				if (a != '+' && a)
+				{
+					DBG_LOG("bad command args\n"); continue;
+				}
+				if (ram_addr == ~0u)
+				{
+					DBG_LOG("ram address is unknown\n"); continue;
+				}
+				end += 3; addr = ram_addr;
+			}
+			addr += strtoll(end, &end, 0);
+			if (*end) { DBG_LOG("bad command args\n"); continue; }
+
+			send_file(io, fn, addr, 0, 528);
+		}
+		else if (!strncmp(str2[1], "fdl", 3)) {
 			const char *fn; uint32_t addr = 0; char *end;FILE *fi;
 			if (argcount <= 3) { DBG_LOG("fdl FILE addr\n");continue; }
 
@@ -342,7 +369,7 @@ int main(int argc, char **argv) {
 			if (offset + size < offset)
 				{ DBG_LOG("64-bit limit reached\n");continue; }
 			dump_partition(io, name, offset, size, fn,
-					blk_size ? blk_size : 4096);
+					blk_size ? blk_size : 0xffff);
 
 		} else if (!strcmp(str2[1], "partition_list")) {
 			if (argcount <= 2) { DBG_LOG("partition_list FILE\n");continue; }

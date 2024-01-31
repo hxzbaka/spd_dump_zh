@@ -152,7 +152,7 @@ void find_endpoints(libusb_device_handle* dev_handle, int result[2]) {
 }
 #endif
 
-#define RECV_BUF_LEN 1024
+#define RECV_BUF_LEN (0x8000)
 
 spdio_t* spdio_init(int flags) {
 	uint8_t* p; spdio_t* io;
@@ -605,6 +605,26 @@ void select_partition(spdio_t* io, const char* name,
 		sizeof(pkt.name) + (mode64 ? 16 : 4));
 }
 
+#define PROGRESS_BAR_WIDTH 40
+
+void print_progress_bar(uint64_t total, uint64_t progress0, uint64_t progress) {
+	int completed0 = PROGRESS_BAR_WIDTH * progress0 / total;
+	int completed = PROGRESS_BAR_WIDTH * progress / total;
+	int remaining;
+	if (completed != completed0)
+	{
+		remaining = PROGRESS_BAR_WIDTH - completed;
+		printf("[");
+		for (int i = 0; i < completed; i++) {
+			printf("=");
+		}
+		for (int i = 0; i < remaining; i++) {
+			printf(" ");
+		}
+		printf("] %.1f%%\n", 100.0 * progress / total);
+	}
+}
+
 uint64_t dump_partition(spdio_t* io,
 	const char* name, uint64_t start, uint64_t len,
 	const char* fn, unsigned step) {
@@ -639,6 +659,7 @@ uint64_t dump_partition(spdio_t* io,
 			ERR_EXIT("unexpected length\n");
 		if (fwrite(io->raw_buf + 4, 1, nread, fo) != nread)
 			ERR_EXIT("fwrite(dump) failed\n");
+		print_progress_bar(len, offset, offset + nread);
 		offset += nread;
 		if (n != nread) break;
 	}
@@ -830,6 +851,7 @@ void load_partition(spdio_t* io, const char* name,
 			DBG_LOG("unexpected response (0x%04x)\n", ret);
 			break;
 		}
+		print_progress_bar(len, offset, offset + n);
 	}
 	DBG_LOG("load_partition: %s, target: 0x%llx, written: 0x%llx\n",
 		name, (long long)len, (long long)offset);

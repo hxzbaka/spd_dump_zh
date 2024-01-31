@@ -296,7 +296,7 @@ int main(int argc, char **argv) {
 			if (offset + size < offset)
 				ERR_EXIT("64-bit limit reached\n");
 			dump_partition(io, name, offset, size, fn,
-					blk_size ? blk_size : 4096);
+					blk_size ? blk_size : 0xffff);
 			argc -= 5; argv += 5;
 
 		} else if (!strcmp(argv[1], "partition_list")) {
