@@ -299,6 +299,16 @@ int main(int argc, char **argv) {
 					blk_size ? blk_size : 0xffff);
 			argc -= 5; argv += 5;
 
+		} else if (!strcmp(argv[1], "read_parts")) {
+			const char* fn; FILE* fi;
+			if (argc <= 2) ERR_EXIT("read_parts partition_list_file\n\t(ufs/emmc) read_parts part.xml\n\t(ubi) read_parts ubipart.xml\n");
+			fn = argv[2];
+			fi = fopen(fn, "r");
+			if (fi == NULL) ERR_EXIT("File does not exist.\n");
+			else fclose(fi);
+			dump_partitions(io, nand_info, fn);
+			argc -= 2; argv += 2;
+
 		} else if (!strcmp(argv[1], "partition_list")) {
 			if (argc <= 2) ERR_EXIT("partition_list FILE\n");
 			partition_list(io, argv[2]);
@@ -395,6 +405,7 @@ int main(int argc, char **argv) {
 			DBG_LOG("exec\n");
 			DBG_LOG("read_part part_name offset size FILE\n");
 			DBG_LOG("(read ubi on nand) read_part system 0 ubi40m system.bin\n");
+			DBG_LOG("read_parts partition_list_file\n\t(ufs/emmc) read_parts part.xml\n\t(ubi) read_parts ubipart.xml\n");
 			DBG_LOG("write_part part_name FILE\n");
 			DBG_LOG("erase_part part_name\n");
 			DBG_LOG("partition_list FILE\n");

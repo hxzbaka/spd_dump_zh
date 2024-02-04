@@ -1060,3 +1060,90 @@ uint64_t str_to_size_ubi(const char* str, int* nand_info) {
 		else return n;
 	}
 }
+
+typedef struct {
+	char name[36];
+	long long size;
+} partition_t;
+
+void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
+	partition_t partitions[128];
+	const char* part1 = "Partitions>";
+	char* src, * p;
+	int part1_len = strlen(part1), found = 0, stage = 0, ubi = 0;
+	size_t size = 0;
+
+	if (memcmp(fn, "ubi", 3)) ubi = 1;
+	src = (char*)loadfile(fn, &size, 1);
+	if (!src) ERR_EXIT("loadfile failed\n");
+	src[size] = 0;
+	p = src;
+
+	for (;;) {
+		int i, a = *p++, n;
+		char c;
+
+		if (a == ' ' || a == '\t' || a == '\n' || a == '\r') continue;
+
+		if (a != '<') {
+			if (!a) break;
+			if (stage != 1) continue;
+			ERR_EXIT("xml: unexpected symbol\n");
+		}
+
+		if (!memcmp(p, "!--", 3)) {
+			p = strstr(p + 3, "--");
+			if (!p || !((p[-1] - '!') | (p[-2] - '<')) || p[2] != '>')
+				ERR_EXIT("xml: unexpected syntax\n");
+			p += 3;
+			continue;
+		}
+
+		if (stage != 1) {
+			stage += !memcmp(p, part1, part1_len);
+			if (stage > 2)
+				ERR_EXIT("xml: more than one partition lists\n");
+			p = strchr(p, '>');
+			if (!p) ERR_EXIT("xml: unexpected syntax\n");
+			p++;
+			continue;
+		}
+
+		if (*p == '/' && !memcmp(p + 1, part1, part1_len)) {
+			p = p + 1 + part1_len;
+			stage++;
+			continue;
+		}
+
+		i = sscanf(p, "Partition id=\"%35[^\"]\" size=\"%lli\"/%n%c", partitions[found].name, &partitions[found].size, &n, &c);
+		if (i != 3 || c != '>')
+			ERR_EXIT("xml: unexpected syntax\n");
+		p += n + 1;
+		found++;
+		if (found >= 128) break;
+	}
+	if (p - 1 != src + size) ERR_EXIT("xml: zero byte");
+	if (stage != 2) ERR_EXIT("xml: unexpected syntax\n");
+	free(src);
+	for (int i = 0; i < found; i++) {
+		printf("Partition %d: name=%s, size=%llim\n", i + 1, partitions[i].name, partitions[i].size);
+		char dfile[40] = { 0 };
+		sprintf(dfile, "%s.bin", partitions[i].name);
+		if (strstr(partitions[i].name, "userdata")) continue;
+		else if (strstr(partitions[i].name, "fixnv") || strstr(partitions[i].name, "runtimenv"))
+		{
+			dump_partition(io, partitions[i].name, 0, (partitions[i].size << 20) - 0x200, dfile, 0xffff);
+		}
+		else if (ubi)
+		{
+			char str_size[16] = { 0 };
+			sprintf(str_size, "%llim", partitions[i].size);
+			uint64_t size = str_to_size_ubi(str_size, nand_info);
+			dump_partition(io, partitions[i].name, 0, size, dfile, 0xffff);
+		}
+		else
+		{
+			dump_partition(io, partitions[i].name, 0, partitions[i].size << 20, dfile, 0xffff);
+		}
+	}
+}
