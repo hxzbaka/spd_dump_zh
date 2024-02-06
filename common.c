@@ -1125,25 +1125,18 @@ void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
 	if (p - 1 != src + size) ERR_EXIT("xml: zero byte");
 	if (stage != 2) ERR_EXIT("xml: unexpected syntax\n");
 	free(src);
+
 	for (int i = 0; i < found; i++) {
 		printf("Partition %d: name=%s, size=%llim\n", i + 1, partitions[i].name, partitions[i].size);
 		char dfile[40] = { 0 };
 		sprintf(dfile, "%s.bin", partitions[i].name);
+		uint64_t realsize = partitions[i].size << 20;
 		if (strstr(partitions[i].name, "userdata")) continue;
-		else if (strstr(partitions[i].name, "fixnv") || strstr(partitions[i].name, "runtimenv"))
-		{
-			dump_partition(io, partitions[i].name, 0, (partitions[i].size << 20) - 0x200, dfile, 0xffff);
+		else if (strstr(partitions[i].name, "fixnv") || strstr(partitions[i].name, "runtimenv")) realsize -= 0x200;
+		else if (ubi) {
+			int block = partitions[i].size * (1024 / nand_info[2]) + partitions[i].size * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1;
+			realsize = 1024 * (nand_info[2] - 2 * nand_info[0]) * block;
 		}
-		else if (ubi)
-		{
-			char str_size[16] = { 0 };
-			sprintf(str_size, "%llim", partitions[i].size);
-			uint64_t size = str_to_size_ubi(str_size, nand_info);
-			dump_partition(io, partitions[i].name, 0, size, dfile, 0xffff);
-		}
-		else
-		{
-			dump_partition(io, partitions[i].name, 0, partitions[i].size << 20, dfile, 0xffff);
-		}
+		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0xffff);
 	}
 }
