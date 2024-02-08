@@ -369,7 +369,7 @@ int main(int argc, char **argv) {
 			if (offset + size < offset)
 				{ DBG_LOG("64-bit limit reached\n");continue; }
 			dump_partition(io, name, offset, size, fn,
-					blk_size ? blk_size : 0xffff);
+					blk_size ? blk_size : 0x7ff0);
 
 		} else if (!strcmp(str2[1], "read_parts")) {
 			const char* fn; FILE* fi;
@@ -407,7 +407,7 @@ int main(int argc, char **argv) {
 			if (strstr(str2[2], "fixnv") || strstr(str2[2], "runtimenv"))
 				load_nv_partition(io, str2[2], str2[3], blk_size ? blk_size : 4096);
 			else
-				load_partition(io, str2[2], str2[3], blk_size ? blk_size : 4096);
+				load_partition(io, str2[2], str2[3], blk_size ? blk_size : 0xfff0);
 
 		} else if (!strcmp(str2[1], "read_pactime")) {
 			read_pactime(io);

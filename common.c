@@ -1137,6 +1137,6 @@ void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
 			int block = partitions[i].size * (1024 / nand_info[2]) + partitions[i].size * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1;
 			realsize = 1024 * (nand_info[2] - 2 * nand_info[0]) * block;
 		}
-		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0xffff);
+		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0x7ff0);
 	}
 }
