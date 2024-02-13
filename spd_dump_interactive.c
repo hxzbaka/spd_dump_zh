@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
 	int wait = 30 * REOPEN_FREQ;
 	int fdl1_loaded = 0, fdl2_loaded = 0, argcount = 0, exec_addr = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
+	DA_INFO_T Da_Info = { 0 };
 	uint32_t ram_addr = ~0u;
 	int keep_charge = 1, end_data = 1, blk_size = 0;
 	char *temp;
@@ -104,9 +105,14 @@ int main(int argc, char **argv) {
 		break;
 	case 2:
 		io->flags &= ~FLAGS_CRC16;
-#if AUTO_DISABLE_TRANSCODE
-		io->flags &= ~FLAGS_TRANSCODE;
-#endif
+		encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
+		send_msg(io);
+		ret = recv_msg(io);
+		if (!ret) ERR_EXIT("timeout reached\n");
+		if (recv_type(io) == BSL_REP_ACK) {
+			io->flags &= ~FLAGS_TRANSCODE;
+			DBG_LOG("DISABLE_TRANSCODE\n");
+		}
 		fdl1_loaded = 1;
 		fdl2_loaded = 1;
 		break;
@@ -287,16 +293,16 @@ int main(int argc, char **argv) {
 				ret = recv_type(io);
 				// Is it always bullshit?
 				if (ret == BSL_REP_INCOMPATIBLE_PARTITION)
-					DBG_LOG("FDL2: incompatible partition\n");
+					get_Da_Info(io, &Da_Info);
 				else if (ret != BSL_REP_ACK)
 					ERR_EXIT("unexpected response (0x%04x)\n", ret);
 				DBG_LOG("EXEC FDL2\n");
-#if AUTO_DISABLE_TRANSCODE
-				encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-				send_and_check(io);
-				io->flags &= ~FLAGS_TRANSCODE;
-				DBG_LOG("DISABLE_TRANSCODE\n");
-#endif
+				if (Da_Info.bDisableHDLC) {
+					encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
+					send_and_check(io);
+					io->flags &= ~FLAGS_TRANSCODE;
+					DBG_LOG("DISABLE_TRANSCODE\n");
+				}
 				if (nand_id == DEFAULT_NAND_ID) {
 					nand_info[0] = (uint8_t)pow(2, nand_id & 3); //page size
 					nand_info[1] = 32 / (uint8_t)pow(2, (nand_id >> 2) & 3); //spare area size

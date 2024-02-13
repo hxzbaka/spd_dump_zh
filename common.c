@@ -929,10 +929,9 @@ void load_nv_partition(spdio_t* io, const char* name,
 			tmp[0] = 0;
 			tmp[1] = 0;
 			memcpy(tmp, mem + memOffset + len, sizeof(tmp));
-			uint16_t itemSize = tmp[1];
 
 			len += sizeof(tmp);
-			len += sizeof(char) * itemSize;
+			len += tmp[1];
 
 			uint32_t doffset = ((len + 3) & 0xFFFFFFFC) - len;
 			len += doffset;
@@ -1139,4 +1138,27 @@ void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
 		}
 		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0x7ff0);
 	}
+}
+
+void get_Da_Info(spdio_t* io, DA_INFO_T* Da_Info)
+{
+	if (io->raw_len > 6) {
+		if (0x7477656e == *(uint32_t*)(io->raw_buf + 4)) {
+			uint32_t len = 8;
+			uint16_t tmp[2];
+			while (len + 2 < io->raw_len)
+			{
+				tmp[0] = 0;
+				tmp[1] = 0;
+				memcpy(tmp, io->raw_buf + len, sizeof(tmp));
+
+				len += sizeof(tmp);
+				if (tmp[0] == 0) Da_Info->bDisableHDLC = *(uint8_t*)(io->raw_buf + len);
+				else if (tmp[0] == 6) Da_Info->dwStorageType = *(uint16_t*)(io->raw_buf + len);
+				len += tmp[1];
+			}
+		}
+		else memcpy(&Da_Info, io->raw_buf, sizeof(Da_Info));
+	}
+	DBG_LOG("FDL2: incompatible partition\n");
 }

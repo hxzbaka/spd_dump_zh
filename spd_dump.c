@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
 	int wait = 30 * REOPEN_FREQ;
 	int fdl_loaded = 0, exec_addr = 0, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
+	DA_INFO_T Da_Info = { 0 };
 	uint32_t ram_addr = ~0u;
 	int keep_charge = 1, end_data = 1, blk_size = 0;
 	char execfile[40];
@@ -207,16 +208,16 @@ int main(int argc, char **argv) {
 				ret = recv_type(io);
 				// Is it always bullshit?
 				if (ret == BSL_REP_INCOMPATIBLE_PARTITION)
-					DBG_LOG("FDL2: incompatible partition\n");
+					get_Da_Info(io, &Da_Info);
 				else if (ret != BSL_REP_ACK)
 					ERR_EXIT("unexpected response (0x%04x)\n", ret);
 				DBG_LOG("EXEC FDL2\n");
-#if AUTO_DISABLE_TRANSCODE
-				encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-				send_and_check(io);
-				io->flags &= ~FLAGS_TRANSCODE;
-				DBG_LOG("DISABLE_TRANSCODE\n");
-#endif
+				if (Da_Info.bDisableHDLC) {
+					encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
+					send_and_check(io);
+					io->flags &= ~FLAGS_TRANSCODE;
+					DBG_LOG("DISABLE_TRANSCODE\n");
+				}
 				if (nand_id == DEFAULT_NAND_ID) {
 					nand_info[0] = (uint8_t)pow(2, nand_id & 3); //page size
 					nand_info[1] = 32 / (uint8_t)pow(2, (nand_id >> 2) & 3); //spare area size
