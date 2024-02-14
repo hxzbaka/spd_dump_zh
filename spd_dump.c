@@ -17,12 +17,12 @@
 #include "common.h"
 #define REOPEN_FREQ 2
 
+extern DA_INFO_T Da_Info;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i;
 	int wait = 30 * REOPEN_FREQ;
 	int fdl_loaded = 0, exec_addr = 0, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
-	DA_INFO_T Da_Info = { 0 };
 	uint32_t ram_addr = ~0u;
 	int keep_charge = 1, end_data = 1, blk_size = 0;
 	char execfile[40];
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
 
 				encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
 				send_msg(io);
-				ret = recv_msg(io);
+				recv_msg(io);
 				if (recv_type(io) != BSL_REP_VER)
 					ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 				DBG_LOG("CHECK_BAUD bootrom\n");
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
 				i = 0;
 				while (1) {
 					send_msg(io);
-					ret = recv_msg(io);
+					recv_msg(io);
 					if (recv_type(io) == BSL_REP_VER) break;
 					DBG_LOG("CHECK_BAUD FAIL\n");
 					i++;
@@ -165,6 +165,7 @@ int main(int argc, char **argv) {
 				while (1) {
 					send_msg(io);
 					ret = recv_msg(io);
+					if (!ret) ERR_EXIT("timeout reached\n");
 					if (recv_type(io) == BSL_CMD_READ_END) break;
 					pdump = (char*)(io->raw_buf + 4);
 					for (i = 0; i < 512; i++)
@@ -208,7 +209,7 @@ int main(int argc, char **argv) {
 				ret = recv_type(io);
 				// Is it always bullshit?
 				if (ret == BSL_REP_INCOMPATIBLE_PARTITION)
-					get_Da_Info(io, &Da_Info);
+					get_Da_Info(io);
 				else if (ret != BSL_REP_ACK)
 					ERR_EXIT("unexpected response (0x%04x)\n", ret);
 				DBG_LOG("EXEC FDL2\n");
@@ -217,6 +218,11 @@ int main(int argc, char **argv) {
 					send_and_check(io);
 					io->flags &= ~FLAGS_TRANSCODE;
 					DBG_LOG("DISABLE_TRANSCODE\n");
+				}
+				if (Da_Info.bSupportRawData == 2) {
+					encode_msg(io, BSL_CMD_WRITE_RAW_DATA_ENABLE, NULL, 0);
+					send_and_check(io);
+					DBG_LOG("ENABLE_WRITE_RAW_DATA\n");
 				}
 				if (nand_id == DEFAULT_NAND_ID) {
 					nand_info[0] = (uint8_t)pow(2, nand_id & 3); //page size
@@ -297,7 +303,7 @@ int main(int argc, char **argv) {
 			if (offset + size < offset)
 				ERR_EXIT("64-bit limit reached\n");
 			dump_partition(io, name, offset, size, fn,
-					blk_size ? blk_size : 0x7ff0);
+					blk_size ? blk_size : 0x3000);
 			argc -= 5; argv += 5;
 
 		} else if (!strcmp(argv[1], "read_parts")) {
@@ -330,7 +336,7 @@ int main(int argc, char **argv) {
 			if (strstr(argv[2], "fixnv") || strstr(argv[2], "runtimenv"))
 				load_nv_partition(io, argv[2], argv[3], blk_size ? blk_size : 4096);
 			else
-				load_partition(io, argv[2], argv[3], blk_size ? blk_size : 0xfff0);
+				load_partition(io, argv[2], argv[3], blk_size ? blk_size : 0xf000);
 			argc -= 3; argv += 3;
 
 		} else if (!strcmp(argv[1], "read_pactime")) {
@@ -348,6 +354,7 @@ int main(int argc, char **argv) {
 			encode_msg(io, BSL_CMD_READ_CHIP_UID, NULL, 0);
 			send_msg(io);
 			ret = recv_msg(io);
+			if (!ret) ERR_EXIT("timeout reached\n");
 			if ((ret = recv_type(io)) != BSL_REP_READ_CHIP_UID)
 				ERR_EXIT("unexpected response (0x%04x)\n", ret);
 

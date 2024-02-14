@@ -154,6 +154,8 @@ void find_endpoints(libusb_device_handle* dev_handle, int result[2]) {
 
 #define RECV_BUF_LEN (0x8000)
 
+DA_INFO_T Da_Info;
+
 spdio_t* spdio_init(int flags) {
 	uint8_t* p; spdio_t* io;
 
@@ -319,6 +321,7 @@ int recv_msg(spdio_t* io) {
 
 	len = io->recv_len;
 	pos = io->recv_pos;
+	memset(io->recv_buf, 0, 8);
 	for (;;) {
 		if (pos >= len) {
 #if USE_LIBUSB
@@ -518,6 +521,7 @@ unsigned dump_flash(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_FLASH, data, 4 * 3);
 		send_msg(io);
 		ret = recv_msg(io);
+		if (!ret) ERR_EXIT("timeout reached\n");
 		if ((ret = recv_type(io)) != BSL_REP_READ_FLASH) {
 			DBG_LOG("unexpected response (0x%04x)\n", ret);
 			break;
@@ -554,6 +558,7 @@ unsigned dump_mem(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_FLASH, data, sizeof(data));
 		send_msg(io);
 		ret = recv_msg(io);
+		if (!ret) ERR_EXIT("timeout reached\n");
 		if ((ret = recv_type(io)) != BSL_REP_READ_FLASH) {
 			DBG_LOG("unexpected response (0x%04x)\n", ret);
 			break;
@@ -650,6 +655,7 @@ uint64_t dump_partition(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_MIDST, data, mode64 ? 12 : 8);
 		send_msg(io);
 		ret = recv_msg(io);
+		if (!ret) ERR_EXIT("timeout reached\n");
 		if ((ret = recv_type(io)) != BSL_REP_READ_FLASH) {
 			DBG_LOG("unexpected response (0x%04x)\n", ret);
 			break;
@@ -685,7 +691,8 @@ uint64_t read_pactime(spdio_t* io) {
 	WRITE32_LE(data + 1, offset);
 	encode_msg(io, BSL_CMD_READ_MIDST, data, sizeof(data));
 	send_msg(io);
-	recv_msg(io);
+	ret = recv_msg(io);
+	if (!ret) ERR_EXIT("timeout reached\n");
 	if ((ret = recv_type(io)) != BSL_REP_READ_FLASH)
 		ERR_EXIT("unexpected response (0x%04x)\n", ret);
 	n = READ16_BE(io->raw_buf + 2);
@@ -767,7 +774,8 @@ void partition_list(spdio_t* io, const char* fn) {
 
 	encode_msg(io, BSL_CMD_READ_PARTITION, NULL, 0);
 	send_msg(io);
-	recv_msg(io);
+	ret = recv_msg(io);
+	if (!ret) ERR_EXIT("timeout reached\n");
 	ret = recv_type(io);
 	if (ret != BSL_REP_READ_PARTITION)
 		ERR_EXIT("unexpected response (0x%04x)\n", ret);
@@ -839,19 +847,52 @@ void load_partition(spdio_t* io, const char* name,
 	select_partition(io, name, len, mode64, BSL_CMD_START_DATA);
 	send_and_check(io);
 
-	for (offset = 0; (n64 = len - offset); offset += n) {
-		n = n64 > step ? step : n64;
-		if (fread(io->temp_buf, 1, n, fi) != n)
-			ERR_EXIT("fread(load) failed\n");
-		encode_msg(io, BSL_CMD_MIDST_DATA, io->temp_buf, n);
-		send_msg(io);
-		ret = recv_msg_timeout(io, 15000);
-		if (!ret) ERR_EXIT("timeout reached\n");
-		if ((ret = recv_type(io)) != BSL_REP_ACK) {
-			DBG_LOG("unexpected response (0x%04x)\n", ret);
-			break;
+	if (Da_Info.bSupportRawData == 2) {
+		step = Da_Info.dwFlushSize << 10;
+		uint8_t* rawbuf = (uint8_t*)malloc(step);
+		if (!rawbuf) ERR_EXIT("malloc failed\n");
+		encode_msg(io, BSL_CMD_DLOAD_RAW_START2, NULL, 0);
+		send_and_check(io);
+
+		for (offset = 0; (n64 = len - offset); offset += n) {
+			n = n64 > step ? step : n64;
+			if (fread(rawbuf, 1, n, fi) != n)
+				ERR_EXIT("fread(load) failed\n");
+#if USE_LIBUSB
+			int err = libusb_bulk_transfer(io->dev_handle,
+				io->endp_out, rawbuf, n, &ret, io->timeout);
+			if (err < 0)
+				ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+#else
+			ret = call_Write(io->handle, rawbuf, n);
+#endif
+			if (io->verbose >= 1) DBG_LOG("send (%d)\n", n);
+			if (ret != (int)n)
+				ERR_EXIT("usb_send failed (%d / %d)\n", ret, n);
+			ret = recv_msg_timeout(io, 15000);
+			if (!ret) ERR_EXIT("timeout reached\n");
+			if ((ret = recv_type(io)) != BSL_REP_ACK) {
+				DBG_LOG("unexpected response (0x%04x)\n", ret);
+				break;
+			}
+			print_progress_bar(len, offset, offset + n);
 		}
-		print_progress_bar(len, offset, offset + n);
+	}
+	else {
+		for (offset = 0; (n64 = len - offset); offset += n) {
+			n = n64 > step ? step : n64;
+			if (fread(io->temp_buf, 1, n, fi) != n)
+				ERR_EXIT("fread(load) failed\n");
+			encode_msg(io, BSL_CMD_MIDST_DATA, io->temp_buf, n);
+			send_msg(io);
+			ret = recv_msg_timeout(io, 15000);
+			if (!ret) ERR_EXIT("timeout reached\n");
+			if ((ret = recv_type(io)) != BSL_REP_ACK) {
+				DBG_LOG("unexpected response (0x%04x)\n", ret);
+				break;
+			}
+			print_progress_bar(len, offset, offset + n);
+		}
 	}
 	DBG_LOG("load_partition: %s, target: 0x%llx, written: 0x%llx\n",
 		name, (long long)len, (long long)offset);
@@ -1007,7 +1048,8 @@ int64_t find_partition_size(spdio_t* io, const char* name) {
 
 		encode_msg(io, BSL_CMD_READ_MIDST, data, sizeof(data));
 		send_msg(io);
-		recv_msg(io);
+		ret = recv_msg(io);
+		if (!ret) ERR_EXIT("timeout reached\n");
 		ret = recv_type(io);
 		if (ret != BSL_REP_READ_FLASH) continue;
 		offset = n64 + (1 << 20);
@@ -1136,15 +1178,15 @@ void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
 			int block = partitions[i].size * (1024 / nand_info[2]) + partitions[i].size * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1;
 			realsize = 1024 * (nand_info[2] - 2 * nand_info[0]) * block;
 		}
-		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0x7ff0);
+		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0x3000);
 	}
 }
 
-void get_Da_Info(spdio_t* io, DA_INFO_T* Da_Info)
+void get_Da_Info(spdio_t* io)
 {
 	if (io->raw_len > 6) {
 		if (0x7477656e == *(uint32_t*)(io->raw_buf + 4)) {
-			uint32_t len = 8;
+			int len = 8;
 			uint16_t tmp[2];
 			while (len + 2 < io->raw_len)
 			{
@@ -1153,8 +1195,10 @@ void get_Da_Info(spdio_t* io, DA_INFO_T* Da_Info)
 				memcpy(tmp, io->raw_buf + len, sizeof(tmp));
 
 				len += sizeof(tmp);
-				if (tmp[0] == 0) Da_Info->bDisableHDLC = *(uint8_t*)(io->raw_buf + len);
-				else if (tmp[0] == 6) Da_Info->dwStorageType = *(uint16_t*)(io->raw_buf + len);
+				if (tmp[0] == 0) Da_Info.bDisableHDLC = *(uint32_t*)(io->raw_buf + len);
+				else if (tmp[0] == 2) Da_Info.bSupportRawData = *(uint8_t*)(io->raw_buf + len);
+				else if (tmp[0] == 3) Da_Info.dwFlushSize = *(uint32_t*)(io->raw_buf + len);
+				else if (tmp[0] == 6) Da_Info.dwStorageType = *(uint32_t*)(io->raw_buf + len);
 				len += tmp[1];
 			}
 		}

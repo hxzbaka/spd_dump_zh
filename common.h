@@ -132,4 +132,4 @@ void load_nv_partition(spdio_t* io, const char* name, const char* fn, unsigned s
 int64_t find_partition_size(spdio_t *io, const char *name);
 uint64_t str_to_size(const char *str);
 uint64_t str_to_size_ubi(const char* str, int* nand_info);
-void get_Da_Info(spdio_t* io, DA_INFO_T* Da_Info);
+void get_Da_Info(spdio_t* io);
