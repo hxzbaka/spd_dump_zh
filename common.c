@@ -1114,7 +1114,7 @@ void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
 	int part1_len = strlen(part1), found = 0, stage = 0, ubi = 0;
 	size_t size = 0;
 
-	if (memcmp(fn, "ubi", 3)) ubi = 1;
+	if (!memcmp(fn, "ubi", 3)) ubi = 1;
 	src = (char*)loadfile(fn, &size, 1);
 	if (!src) ERR_EXIT("loadfile failed\n");
 	src[size] = 0;
