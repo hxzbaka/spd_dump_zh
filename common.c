@@ -622,9 +622,10 @@ void select_partition(spdio_t* io, const char* name,
 
 #define PROGRESS_BAR_WIDTH 40
 
-void print_progress_bar(uint64_t total, uint64_t progress0, uint64_t progress) {
-	int completed0 = PROGRESS_BAR_WIDTH * progress0 / total;
-	int completed = PROGRESS_BAR_WIDTH * progress / total;
+void print_progress_bar(float progress) {
+	static int completed0 = 0;
+	if (completed0 == PROGRESS_BAR_WIDTH) completed0 = 0;
+	int completed = PROGRESS_BAR_WIDTH * progress;
 	int remaining;
 	if (completed != completed0)
 	{
@@ -636,8 +637,9 @@ void print_progress_bar(uint64_t total, uint64_t progress0, uint64_t progress) {
 		for (int i = 0; i < remaining; i++) {
 			printf(" ");
 		}
-		printf("] %.1f%%\n", 100.0 * progress / total);
+		printf("] %.1f%%\n", 100 * progress);
 	}
+	completed0 = completed;
 }
 
 uint64_t dump_partition(spdio_t* io,
@@ -675,7 +677,7 @@ uint64_t dump_partition(spdio_t* io,
 			ERR_EXIT("unexpected length\n");
 		if (fwrite(io->raw_buf + 4, 1, nread, fo) != nread)
 			ERR_EXIT("fwrite(dump) failed\n");
-		print_progress_bar(len, offset, offset + nread);
+		print_progress_bar((offset + nread - start) / (float)len);
 		offset += nread;
 		if (n != nread) break;
 	}
@@ -885,7 +887,7 @@ void load_partition(spdio_t* io, const char* name,
 				DBG_LOG("unexpected response (0x%04x)\n", ret);
 				break;
 			}
-			print_progress_bar(len, offset, offset + n);
+			print_progress_bar((offset + n) / (float)len);
 		}
 	}
 	else {
@@ -901,7 +903,7 @@ void load_partition(spdio_t* io, const char* name,
 				DBG_LOG("unexpected response (0x%04x)\n", ret);
 				break;
 			}
-			print_progress_bar(len, offset, offset + n);
+			print_progress_bar((offset + n) / (float)len);
 		}
 	}
 	DBG_LOG("load_partition: %s, target: 0x%llx, written: 0x%llx\n",
