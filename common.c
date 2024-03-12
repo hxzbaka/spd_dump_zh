@@ -444,11 +444,6 @@ void send_and_check(spdio_t* io) {
 		ERR_EXIT("unexpected response (0x%04x)\n", ret);
 }
 
-#if NO_CONFIRM
-void check_confirm(const char* name) {
-	return;
-}
-#else
 void check_confirm(const char* name) {
 	char buf[4], c; int i;
 	printf("Answer \"yes\" to confirm the \"%s\" command: ", name);
@@ -461,7 +456,6 @@ void check_confirm(const char* name) {
 	} while (0);
 	ERR_EXIT("operation is not confirmed\n");
 }
-#endif
 
 uint8_t* loadfile(const char* fn, size_t* num, size_t extra) {
 	size_t n, j = 0; uint8_t* buf = 0;
@@ -829,13 +823,11 @@ void repartition(spdio_t* io, const char* fn) {
 	uint8_t* buf = io->temp_buf;
 	int n = scan_xml_partitions(fn, buf, 0xffff);
 	// print_mem(stderr, io->temp_buf, n * 0x4c);
-	check_confirm("repartition");
 	encode_msg(io, BSL_CMD_REPARTITION, buf, n * 0x4c);
 	send_and_check(io);
 }
 
 void erase_partition(spdio_t* io, const char* name) {
-	check_confirm("erase partition");
 	select_partition(io, name, 0, 0, BSL_CMD_ERASE_FLASH);
 	send_and_check(io);
 }
@@ -855,7 +847,6 @@ void load_partition(spdio_t* io, const char* name,
 	DBG_LOG("file size : 0x%llx\n", (long long)len);
 
 	mode64 = len >> 32;
-	check_confirm("write partition");
 	select_partition(io, name, len, mode64, BSL_CMD_START_DATA);
 	send_and_check(io);
 
@@ -1009,7 +1000,6 @@ void load_nv_partition(spdio_t* io, const char* name,
 	cs += (crc >> 8) & 0xff;
 	WRITE16_BE(mem, crc);
 
-	check_confirm("write partition");
 	{
 		struct {
 			uint16_t name[36];
@@ -1119,7 +1109,7 @@ typedef struct {
 	long long size;
 } partition_t;
 
-void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
+void dump_partitions(spdio_t* io, const char* fn, int* nand_info,int blk_size) {
 	partition_t partitions[128];
 	const char* part1 = "Partitions>";
 	char* src, * p;
@@ -1190,7 +1180,7 @@ void dump_partitions(spdio_t* io, int* nand_info, const char* fn) {
 			int block = partitions[i].size * (1024 / nand_info[2]) + partitions[i].size * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1;
 			realsize = 1024 * (nand_info[2] - 2 * nand_info[0]) * block;
 		}
-		dump_partition(io, partitions[i].name, 0, realsize, dfile, 0x3000);
+		dump_partition(io, partitions[i].name, 0, realsize, dfile, blk_size);
 	}
 }
 

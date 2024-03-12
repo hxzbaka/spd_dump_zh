@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 	int fdl_loaded = 0, exec_addr = 0, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
 	uint32_t ram_addr = ~0u;
-	int keep_charge = 1, end_data = 1, blk_size = 0;
+	int keep_charge = 1, end_data = 1, blk_size = 0, skip_confirm = 0;
 	char execfile[40];
 
 	io = spdio_init(0);
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 
 			if (fdl_loaded) {
 				send_file(io, fn, addr, end_data,
-					blk_size ? blk_size : 2112);
+					blk_size ? blk_size : 528);
 			} else {
 				for (i = 0; ; i++) {
 					if (!i) DBG_LOG("Waiting for connection (%ds)\n", wait / REOPEN_FREQ);
@@ -127,9 +127,11 @@ int main(int argc, char **argv) {
 
 				send_file(io, fn, addr, end_data, 528);
 
+				i = 0;
 				if (exec_addr) {
 					send_file(io, execfile, exec_addr, 0, 528);
 				} else {
+					real_exec:
 					encode_msg(io, BSL_CMD_EXEC_DATA, NULL, 0);
 					send_and_check(io);
 				}
@@ -139,13 +141,16 @@ int main(int argc, char **argv) {
 				io->flags &= ~FLAGS_CRC16;
 
 				encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-				i = 0;
 				while (1) {
 					send_msg(io);
 					recv_msg(io);
 					if (recv_type(io) == BSL_REP_VER) break;
 					DBG_LOG("CHECK_BAUD FAIL\n");
-					if (i) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+					if (i == 1) {
+						io->flags |= FLAGS_CRC16;
+						goto real_exec;
+					}
+					if (i == 2) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 					usleep(500000);
 					i++;
 				}
@@ -303,7 +308,7 @@ int main(int argc, char **argv) {
 			if (offset + size < offset)
 				ERR_EXIT("64-bit limit reached\n");
 			dump_partition(io, name, offset, size, fn,
-					blk_size ? blk_size : 0x3000);
+					blk_size ? blk_size : 0xff00);
 			argc -= 5; argv += 5;
 
 		} else if (!strcmp(argv[1], "read_parts")) {
@@ -313,7 +318,7 @@ int main(int argc, char **argv) {
 			fi = fopen(fn, "r");
 			if (fi == NULL) ERR_EXIT("File does not exist.\n");
 			else fclose(fi);
-			dump_partitions(io, nand_info, fn);
+			dump_partitions(io, fn, nand_info, blk_size ? blk_size : 0xff00);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "partition_list")) {
@@ -323,20 +328,23 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(argv[1], "repartition")) {
 			if (argc <= 2) ERR_EXIT("repartition FILE\n");
+			if(!skip_confirm) check_confirm("repartition");
 			repartition(io, argv[2]);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "erase_part")) {
 			if (argc <= 2) ERR_EXIT("erase_part part_name\n");
+			if (!skip_confirm) check_confirm("erase partition");
 			erase_partition(io, argv[2]);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "write_part")) {
 			if (argc <= 3) ERR_EXIT("write_part part_name FILE\n");
+			if (!skip_confirm) check_confirm("write partition");
 			if (strstr(argv[2], "fixnv") || strstr(argv[2], "runtimenv"))
 				load_nv_partition(io, argv[2], argv[3], blk_size ? blk_size : 4096);
 			else
-				load_partition(io, argv[2], argv[3], blk_size ? blk_size : 0xf000);
+				load_partition(io, argv[2], argv[3], blk_size ? blk_size : 0xff00);
 			argc -= 3; argv += 3;
 
 		} else if (!strcmp(argv[1], "read_pactime")) {
@@ -348,6 +356,11 @@ int main(int argc, char **argv) {
 			blk_size = strtol(argv[2], NULL, 0);
 			blk_size = blk_size < 0 ? 0 :
 					blk_size > 0xffff ? 0xffff : blk_size;
+			argc -= 2; argv += 2;
+
+		} else if (!strcmp(argv[1], "skip_confirm")) {
+			if (argc <= 2) ERR_EXIT("skip_confirm {0,1}\n");
+			skip_confirm = strtol(argv[2], NULL, 0);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "chip_uid")) {
@@ -421,6 +434,7 @@ int main(int argc, char **argv) {
 			DBG_LOG("reset\n");
 			DBG_LOG("poweroff\n");
 			DBG_LOG("timeout ms\n");
+			DBG_LOG("skip_confirm {0,1}\n");
 			DBG_LOG("blk_size byte\n\tmax is 65535\n");
 			DBG_LOG("nand_id id\n");
 			DBG_LOG("disable_transcode\n");

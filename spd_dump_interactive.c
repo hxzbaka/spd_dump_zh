@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 	int fdl1_loaded = 0, fdl2_loaded = 0, argcount = 0, exec_addr = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
 	uint32_t ram_addr = ~0u;
-	int keep_charge = 1, end_data = 1, blk_size = 0;
+	int keep_charge = 1, end_data = 1, blk_size = 0, skip_confirm = 0;
 	char *temp;
 	char str1[1000];
 	char str2[10][100];
@@ -207,13 +207,15 @@ int main(int argc, char **argv) {
 				continue;
 			} else if (fdl1_loaded) {
 				send_file(io, fn, addr, end_data,
-					blk_size ? blk_size : 2112);
+					blk_size ? blk_size : 528);
 			} else {
 				send_file(io, fn, addr, end_data, 528);
 
+				i = 0;
 				if (exec_addr) {
 					send_file(io, execfile, exec_addr, 0, 528);
 				} else {
+					real_exec:
 					encode_msg(io, BSL_CMD_EXEC_DATA, NULL, 0);
 					send_and_check(io);
 				}
@@ -223,13 +225,16 @@ int main(int argc, char **argv) {
 				io->flags &= ~FLAGS_CRC16;
 
 				encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-				i = 0;
 				while (1) {
 					send_msg(io);
 					recv_msg(io);
 					if (recv_type(io) == BSL_REP_VER) break;
 					DBG_LOG("CHECK_BAUD FAIL\n");
-					if (i) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+					if (i == 1) {
+						io->flags |= FLAGS_CRC16;
+						goto real_exec;
+					}
+					if (i == 2) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 					usleep(500000);
 					i++;
 				}
@@ -381,7 +386,7 @@ int main(int argc, char **argv) {
 			if (offset + size < offset)
 				{ DBG_LOG("64-bit limit reached\n");continue; }
 			dump_partition(io, name, offset, size, fn,
-					blk_size ? blk_size : 0x3000);
+					blk_size ? blk_size : 0xff00);
 
 		} else if (!strcmp(str2[1], "read_parts")) {
 			const char* fn; FILE* fi;
@@ -390,7 +395,7 @@ int main(int argc, char **argv) {
 			fi = fopen(fn, "r");
 			if (fi == NULL) { DBG_LOG("File does not exist.\n"); continue; }
 			else fclose(fi);
-			dump_partitions(io, nand_info, fn);
+			dump_partitions(io, fn, nand_info, blk_size ? blk_size : 0xff00);
 
 		} else if (!strcmp(str2[1], "partition_list")) {
 			if (argcount <= 2) { DBG_LOG("partition_list FILE\n");continue; }
@@ -403,10 +408,12 @@ int main(int argc, char **argv) {
 			fi = fopen(fn, "r");
 			if (fi == NULL) { DBG_LOG("File does not exist.\n");continue; }
 			else fclose(fi);
+			if (!skip_confirm) check_confirm("repartition");
 			repartition(io, str2[2]);
 
 		} else if (!strcmp(str2[1], "erase_part")) {
 			if (argcount <= 2) { DBG_LOG("erase_part part_name\n");continue; }
+			if (!skip_confirm) check_confirm("erase partition");
 			erase_partition(io, str2[2]);
 
 		} else if (!strcmp(str2[1], "write_part")) {
@@ -416,10 +423,11 @@ int main(int argc, char **argv) {
 			fi = fopen(fn, "r");
 			if (fi == NULL) { DBG_LOG("File does not exist.\n");continue; }
 			else fclose(fi);
+			if (!skip_confirm) check_confirm("write partition");
 			if (strstr(str2[2], "fixnv") || strstr(str2[2], "runtimenv"))
 				load_nv_partition(io, str2[2], str2[3], blk_size ? blk_size : 4096);
 			else
-				load_partition(io, str2[2], str2[3], blk_size ? blk_size : 0xf000);
+				load_partition(io, str2[2], str2[3], blk_size ? blk_size : 0xff00);
 
 		} else if (!strcmp(str2[1], "read_pactime")) {
 			read_pactime(io);
@@ -429,6 +437,10 @@ int main(int argc, char **argv) {
 			blk_size = strtol(str2[2], NULL, 0);
 			blk_size = blk_size < 0 ? 0 :
 					blk_size > 0xffff ? 0xffff : blk_size;
+
+		} else if (!strcmp(str2[1], "skip_confirm")) {
+			if (argcount <= 2) { DBG_LOG("skip_confirm {0,1}\n"); continue; }
+			skip_confirm = strtol(str2[2], NULL, 0);
 
 		} else if (!strcmp(str2[1], "chip_uid")) {
 			encode_msg(io, BSL_CMD_READ_CHIP_UID, NULL, 0);
@@ -502,6 +514,7 @@ int main(int argc, char **argv) {
 			DBG_LOG("reset\n");
 			DBG_LOG("poweroff\n");
 			DBG_LOG("timeout ms\n");
+			DBG_LOG("skip_confirm {0,1}\n");
 			DBG_LOG("blk_size byte\n\tmax is 65535\n");
 			DBG_LOG("nand_id [id]\n");
 			DBG_LOG("disable_transcode\n");
