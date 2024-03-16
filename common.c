@@ -850,6 +850,7 @@ void load_partition(spdio_t* io, const char* name,
 	select_partition(io, name, len, mode64, BSL_CMD_START_DATA);
 	send_and_check(io);
 
+#if !USE_LIBUSB
 	if (Da_Info.bSupportRawData == 2) {
 		step = Da_Info.dwFlushSize << 10;
 		uint8_t* rawbuf = (uint8_t*)malloc(step);
@@ -861,14 +862,14 @@ void load_partition(spdio_t* io, const char* name,
 			n = n64 > step ? step : n64;
 			if (fread(rawbuf, 1, n, fi) != n)
 				ERR_EXIT("fread(load) failed\n");
-#if USE_LIBUSB
-			int err = libusb_bulk_transfer(io->dev_handle,
-				io->endp_out, rawbuf, n, &ret, io->timeout);
-			if (err < 0)
-				ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
-#else
+//#if USE_LIBUSB
+//			int err = libusb_bulk_transfer(io->dev_handle,
+//				io->endp_out, rawbuf, n, &ret, io->timeout);
+//			if (err < 0)
+//				ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+//#else
 			ret = call_Write(io->handle, rawbuf, n);
-#endif
+//#endif
 			if (io->verbose >= 1) DBG_LOG("send (%d)\n", n);
 			if (ret != (int)n)
 				ERR_EXIT("usb_send failed (%d / %d)\n", ret, n);
@@ -880,8 +881,8 @@ void load_partition(spdio_t* io, const char* name,
 			}
 			print_progress_bar((offset + n) / (float)len);
 		}
-	}
-	else {
+	} else {
+#endif
 		for (offset = 0; (n64 = len - offset); offset += n) {
 			n = n64 > step ? step : n64;
 			if (fread(io->temp_buf, 1, n, fi) != n)
@@ -896,7 +897,9 @@ void load_partition(spdio_t* io, const char* name,
 			}
 			print_progress_bar((offset + n) / (float)len);
 		}
+#if !USE_LIBUSB
 	}
+#endif
 	DBG_LOG("load_partition: %s, target: 0x%llx, written: 0x%llx\n",
 		name, (long long)len, (long long)offset);
 	fclose(fi);
