@@ -23,11 +23,14 @@ int m_bOpened = 0;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i;
 	int wait = 30 * REOPEN_FREQ;
-	int fdl_loaded = 0, exec_addr = 0, nand_id = DEFAULT_NAND_ID;
+	int fdl_loaded = 0, exec_addr = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
 	uint32_t ram_addr = ~0u;
 	int keep_charge = 1, end_data = 1, blk_size = 0, skip_confirm = 0, baudrate = 0;
 	char execfile[40];
+	int m_DownloadByPoweroff = 0;
+	int part_count = 0;
+	partition_t* ptable = NULL;
 #if !USE_LIBUSB
 	extern DWORD curPort;
 #endif
@@ -51,6 +54,12 @@ int main(int argc, char **argv) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
 			io->verbose = atoi(argv[2]);
 			argc -= 2; argv += 2;
+#if !USE_LIBUSB
+		} else if (!strcmp(argv[1], "--kick")) {
+			if (argc <= 1) ERR_EXIT("bad option\n");
+			m_DownloadByPoweroff = 1;
+			argc -= 1; argv += 1;
+#endif
 		} else break;
 	}
 
@@ -78,14 +87,16 @@ int main(int argc, char **argv) {
 			} else {
 				DBG_LOG("Waiting for connection (%ds)\n", wait / REOPEN_FREQ);
 #if !USE_LIBUSB
-				FindPort();
+				if (m_DownloadByPoweroff)
+					if (ChangeMode(io))
+						stage = 0;
+				if (!curPort) FindPort();
 				io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
 				if (io->hThread == NULL) {
 					return -1;
 				}
 #endif
-				for (i = 0; ; i++) 
-				{
+				for (i = 0; ; i++) {
 #if USE_LIBUSB
 					io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
 					if (io->dev_handle) break;
@@ -108,14 +119,6 @@ int main(int argc, char **argv) {
 #else
 				call_ConnectChannel(io->handle, curPort);
 #endif
-#if _WIN32
-				if (io->hThread == NULL) {
-					io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
-					if (io->hThread == NULL) {
-						return -1;
-					}
-				}
-#endif
 				io->flags |= FLAGS_TRANSCODE;
 
 				// Required for smartphones.
@@ -131,18 +134,20 @@ int main(int argc, char **argv) {
 				/* Bootloader (chk = crc16) */
 				io->flags |= FLAGS_CRC16;
 
-				encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-				send_msg(io);
-				recv_msg(io);
-				if (recv_type(io) != BSL_REP_VER)
-					ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
-				DBG_LOG("CHECK_BAUD bootrom\n");
+				if (stage) {
+					encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
+					send_msg(io);
+					recv_msg(io);
+					if (recv_type(io) != BSL_REP_VER)
+						ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+					DBG_LOG("CHECK_BAUD bootrom\n");
 
-				DBG_LOG("BSL_REP_VER: ");
-				print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
+					DBG_LOG("BSL_REP_VER: ");
+					print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
+				}
 
 				encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-				send_and_check(io);
+				if (send_and_check(io)) exit(1);
 				DBG_LOG("CMD_CONNECT bootrom\n");
 
 				send_file(io, fn, addr, end_data, 528);
@@ -153,7 +158,7 @@ int main(int argc, char **argv) {
 				} else {
 					real_exec:
 					encode_msg(io, BSL_CMD_EXEC_DATA, NULL, 0);
-					send_and_check(io);
+					if (send_and_check(io)) exit(1);
 				}
 				DBG_LOG("EXEC FDL1\n");
 
@@ -210,7 +215,7 @@ int main(int argc, char **argv) {
 #endif
 
 				encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-				send_and_check(io);
+				if (send_and_check(io)) exit(1);
 				DBG_LOG("CMD_CONNECT FDL1\n");
 #if !USE_LIBUSB
 				if (baudrate)
@@ -218,15 +223,15 @@ int main(int argc, char **argv) {
 					uint8_t data[4];
 					WRITE32_BE(data, baudrate);
 					encode_msg(io, BSL_CMD_CHANGE_BAUD, data, 4);
-					send_and_check(io);
-					DBG_LOG("CHANGE_BAUD FDL1 to %d\n", baudrate);
-					call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
+					if (!send_and_check(io)) {
+						DBG_LOG("CHANGE_BAUD FDL1 to %d\n", baudrate);
+						call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
+					}
 				}
 #endif
 				if (keep_charge) {
 					encode_msg(io, BSL_CMD_KEEP_CHARGE, NULL, 0);
-					send_and_check(io);
-					DBG_LOG("KEEP_CHARGE FDL1\n");
+					if (!send_and_check(io)) DBG_LOG("KEEP_CHARGE FDL1\n");
 				}
 			}
 
@@ -251,18 +256,14 @@ int main(int argc, char **argv) {
 				DBG_LOG("EXEC FDL2\n");
 				if (Da_Info.bDisableHDLC) {
 					encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-					send_msg(io);
-					ret = recv_msg(io);
-					if (!ret) ERR_EXIT("timeout reached\n");
-					if (recv_type(io) == BSL_REP_ACK) {
+					if (!send_and_check(io)) {
 						io->flags &= ~FLAGS_TRANSCODE;
 						DBG_LOG("DISABLE_TRANSCODE\n");
 					}
 				}
 				if (Da_Info.bSupportRawData == 2) {
 					encode_msg(io, BSL_CMD_WRITE_RAW_DATA_ENABLE, NULL, 0);
-					send_and_check(io);
-					DBG_LOG("ENABLE_WRITE_RAW_DATA\n");
+					if (!send_and_check(io)) DBG_LOG("ENABLE_WRITE_RAW_DATA\n");
 				}
 				if (nand_id == DEFAULT_NAND_ID) {
 					nand_info[0] = (uint8_t)pow(2, nand_id & 3); //page size
@@ -282,7 +283,7 @@ int main(int argc, char **argv) {
 #endif
 		} else if (!strcmp(argv[1], "path")) {
 			if (argc <= 2) ERR_EXIT("path save_location\n");
-			strcpy(savepath, argv[2]);;
+			strcpy(savepath, argv[2]);
 			DBG_LOG("save dir is %s\n", savepath);
 			argc -= 2; argv += 2;
 
@@ -372,7 +373,7 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(argv[1], "partition_list")) {
 			if (argc <= 2) ERR_EXIT("partition_list FILE\n");
-			partition_list(io, argv[2]);
+			if (!part_count) ptable = partition_list(io, argv[2], &part_count);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "repartition")) {
@@ -432,8 +433,7 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(argv[1], "disable_transcode")) {
 			encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-			send_and_check(io);
-			io->flags &= ~FLAGS_TRANSCODE;
+			if (!send_and_check(io)) io->flags &= ~FLAGS_TRANSCODE;
 			argc -= 1; argv += 1;
 
 		} else if (!strcmp(argv[1], "transcode")) {
@@ -462,12 +462,12 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(argv[1], "reset")) {
 			encode_msg(io, BSL_CMD_NORMAL_RESET, NULL, 0);
-			send_and_check(io);
+			if (!send_and_check(io)) break;
 			argc -= 1; argv += 1;
 
 		} else if (!strcmp(argv[1], "poweroff")) {
 			encode_msg(io, BSL_CMD_POWER_OFF, NULL, 0);
-			send_and_check(io);
+			if (!send_and_check(io)) break;
 			argc -= 1; argv += 1;
 
 		} else if (!strcmp(argv[1], "verbose")) {
@@ -510,7 +510,7 @@ int main(int argc, char **argv) {
 		}
 #endif
 	}
-
+	free(ptable);
 	spdio_free(io);
 	return 0;
 }
