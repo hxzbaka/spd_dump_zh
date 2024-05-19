@@ -118,6 +118,33 @@ typedef struct {
 	long long size;
 } partition_t;
 
+#pragma pack(1)
+typedef struct {
+	uint8_t signature[8];
+	uint32_t revision;
+	uint32_t header_size;
+	uint32_t header_crc32;
+	int32_t reserved;
+	uint64_t current_lba;
+	uint64_t backup_lba;
+	uint64_t first_usable_lba;
+	uint64_t last_usable_lba;
+	uint8_t disk_guid[16];
+	uint64_t partition_entry_lba;
+	int32_t number_of_partition_entries;
+	uint32_t size_of_partition_entry;
+	uint32_t partition_entry_array_crc32;
+} efi_header;
+
+typedef struct {
+	uint8_t partition_type_guid[16];
+	uint8_t unique_partition_guid[16];
+	uint64_t starting_lba;
+	uint64_t ending_lba;
+	int64_t attributes;
+	uint8_t partition_name[72];
+} efi_entry;
+
 typedef struct {
 	uint32_t   dwVersion;
 	uint32_t   bDisableHDLC;	//0: Enable hdl; 1:Disable hdl
@@ -128,6 +155,7 @@ typedef struct {
 	uint32_t   dwStorageType;
 	uint32_t   dwReserve[59];	//Reserve
 }DA_INFO_T;
+#pragma pack()
 
 void print_string(FILE* f, const void* src, size_t n);
 

@@ -446,9 +446,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(str2[1], "p") || !strcmp(str2[1], "print")) {
 			if (part_count)
 				for (i = 0; i < part_count; i++) {
-					printf("id=%s, size=%d", (*(ptable + i)).name, (int)(*(ptable + i)).size);
-					if (part_count != i + 1) printf("M");
-					printf("B/>\n");
+					printf("%3d %36s %lldMB\n", i, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
 				}
 
 		} else if (!strcmp(str2[1], "read_part")) {
@@ -474,9 +472,7 @@ int main(int argc, char **argv) {
 						break;
 			}
 			if (i >= part_count) { DBG_LOG("part not exist\n"); continue; }
-			uint64_t realsize;
-			if (i + 1 == part_count) realsize = (*(ptable + i)).size;
-			else realsize = (*(ptable + i)).size << 20;
+			uint64_t realsize= (*(ptable + i)).size;
 			if (strstr((*(ptable + i)).name, "fixnv") || strstr((*(ptable + i)).name, "runtimenv")) realsize -= 0x200;
 			char dfile[40];
 			sprintf(dfile, "%s.bin", (*(ptable + i)).name);

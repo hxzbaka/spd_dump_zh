@@ -828,32 +828,6 @@ int scan_xml_partitions(const char* fn, uint8_t* buf, size_t buf_size) {
 	return found;
 }
 
-typedef struct {
-	uint8_t signature[8];
-	uint32_t revision;
-	uint32_t header_size;
-	uint32_t header_crc32;
-	int32_t reserved;
-	uint64_t current_lba;
-	uint64_t backup_lba;
-	uint64_t first_usable_lba;
-	uint64_t last_usable_lba;
-	uint8_t disk_guid[16];
-	uint64_t partition_entry_lba;
-	int32_t number_of_partition_entries;
-	uint32_t size_of_partition_entry;
-	uint32_t partition_entry_array_crc32;
-} efi_header;
-
-typedef struct {
-	uint8_t partition_type_guid[16];
-	uint8_t unique_partition_guid[16];
-	uint64_t starting_lba;
-	uint64_t ending_lba;
-	int64_t attributes;
-	uint8_t partition_name[72];
-} efi_entry;
-
 #define SECTOR_SIZE 512
 #define MAX_SECTORS 32
 
@@ -893,7 +867,7 @@ int gpt_info(partition_t* ptable, const char* fn_pgpt, const char* fn_xml, int* 
 		return -1;
 	}
 	fseek(fp, header.partition_entry_lba * real_SECTOR_SIZE, SEEK_SET);
-	bytes_read = fread(entries, sizeof(efi_entry), header.number_of_partition_entries, fp);
+	bytes_read = fread(entries, 1, header.number_of_partition_entries * sizeof(efi_entry), fp);
 	if (bytes_read != (int)(header.number_of_partition_entries * sizeof(efi_entry)))
 		printf("only read %d/%d\n", bytes_read, (int)(header.number_of_partition_entries * sizeof(efi_entry)));
 	FILE* fo = fopen(fn_xml, "wb");
@@ -901,33 +875,26 @@ int gpt_info(partition_t* ptable, const char* fn_pgpt, const char* fn_xml, int* 
 	for (int i = 0; i < header.number_of_partition_entries; i++) {
 		efi_entry entry = *(entries + i);
 		if (entry.starting_lba == 0 && entry.ending_lba == 0) {
-			continue;
+			*part_count_ptr = i;
+			break;
 		}
 		copy_from_wstr((*(ptable + i)).name, 36, (uint16_t*)entry.partition_name);
 		uint64_t lba_count = entry.ending_lba - entry.starting_lba + 1;
-		fprintf(fo, "    <Partition id=\"%s\" size=\"", (*(ptable + i)).name);
-		printf("id=%s, size=", (*(ptable + i)).name);
-		if (i + 1 == header.number_of_partition_entries) {
-			(*(ptable + i)).size = lba_count * real_SECTOR_SIZE;
-			fprintf(fo, "0x%x\"/>\n", ~0);
-			printf("%dB/>\n", (int)(*(ptable + i)).size);
-		}
-		else {
-			(*(ptable + i)).size = lba_count * real_SECTOR_SIZE / (1024 * 1024);
-			fprintf(fo, "%d\"/>\n", (int)(*(ptable + i)).size);
-			printf("%dMB/>\n", (int)(*(ptable + i)).size);
-		}
+		(*(ptable + i)).size = lba_count * real_SECTOR_SIZE;
+		printf("%3d %36s %lldMB\n", i, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
+		if (strcmp((*(ptable + i)).name, "userdata")) fprintf(fo, "\t<Partition id=\"%s\" size=\"%d\"/>\n", (*(ptable + i)).name, (int)((*(ptable + i)).size >> 20));
+		else fprintf(fo, "\t<Partition id=\"%s\" size=\"0xFFFFFFFF\"/>\n", (*(ptable + i)).name);
 	}
 	fprintf(fo, "</Partitions>");
 	fclose(fo);
-	*part_count_ptr = header.number_of_partition_entries;
 	free(entries);
 	fclose(fp);
 	return 0;
 }
 
 partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
-	unsigned size, i, n = 0;
+	long long size;
+	unsigned i, n = 0;
 	int ret; FILE* fo = NULL; uint8_t* p;
 	int gpt_failed = 1;
 	partition_t* ptable = malloc(128 * sizeof(partition_t));
@@ -949,7 +916,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		}
 		size = READ16_BE(io->raw_buf + 2);
 		if (size % 0x4c) {
-			DBG_LOG("not divisible by struct size (0x%04x)\n", size);
+			DBG_LOG("not divisible by struct size (0x%04llx)\n", size);
 			free(ptable);
 			return NULL;
 		}
@@ -971,13 +938,12 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 			ret = copy_from_wstr((*(ptable + i)).name, 36, (uint16_t*)p);
 			if (ret) ERR_EXIT("bad partition name\n");
 			size = READ32_LE(p + 0x48);
-			if (i + 1 == n) (*(ptable + i)).size = (size << 20) >> divisor;
-			else (*(ptable + i)).size = size >> divisor;
-			printf("id=%s, size=%dMB/>\n", (*(ptable + i)).name, (int)(size >> divisor));
+			(*(ptable + i)).size = (size << 20) >> divisor;
+			printf("%3d %36s %lldMB\n", i, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
 			if (fo) {
 				fprintf(fo, "    <Partition id=\"%s\" size=\"", (*(ptable + i)).name);
 				if (i + 1 == n) fprintf(fo, "0x%x\"/>\n", ~0);
-				else fprintf(fo, "%d\"/>\n", (int)(*(ptable + i)).size);
+				else fprintf(fo, "%lld\"/>\n", ((*(ptable + i)).size >> 20));
 			}
 		}
 		if (fo) {
@@ -986,7 +952,10 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		}
 		*part_count_ptr = n;
 	}
-	if (*part_count_ptr) return ptable;
+	if (*part_count_ptr) {
+		printf("Total number of partitions: %d\n", *part_count_ptr);
+		return ptable;
+	}
 	else {
 		free(ptable);
 		return NULL;
