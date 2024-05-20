@@ -508,8 +508,8 @@ int main(int argc, char **argv) {
 			if (isdigit(str2[2][0])) {
 				if (part_count) i = atoi(str2[2]);
 				else { DBG_LOG("gpt table is empty\n"); continue; }
+				if (i >= part_count) { DBG_LOG("part not exist\n"); continue; }
 			}
-			if (i >= part_count) { DBG_LOG("part not exist\n"); continue; }
 			if (!skip_confirm) check_confirm("erase partition");
 			if (i > -1) erase_partition(io, (*(ptable + i)).name);
 			else erase_partition(io, str2[2]);
@@ -522,9 +522,11 @@ int main(int argc, char **argv) {
 			if (fi == NULL) { DBG_LOG("File does not exist.\n");continue; }
 			else fclose(fi);
 			i = -1;
-			if (isdigit(str2[2][0]) && part_count) i = atoi(str2[2]);
-			else { DBG_LOG("gpt table is empty\n"); continue; }
-			if (i >= part_count) { DBG_LOG("part not exist\n"); continue; }
+			if (isdigit(str2[2][0])) {
+				if (part_count) i = atoi(str2[2]);
+				else { DBG_LOG("gpt table is empty\n"); continue; }
+				if (i >= part_count) { DBG_LOG("part not exist\n"); continue; }
+			}
 			if (!skip_confirm) check_confirm("write partition");
 			if (i > -1) {
 				if (strstr((*(ptable + i)).name, "fixnv")) load_nv_partition(io, (*(ptable + i)).name, str2[3], 4096);

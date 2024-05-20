@@ -872,23 +872,29 @@ int gpt_info(partition_t* ptable, const char* fn_pgpt, const char* fn_xml, int* 
 		printf("only read %d/%d\n", bytes_read, (int)(header.number_of_partition_entries * sizeof(efi_entry)));
 	FILE* fo = fopen(fn_xml, "wb");
 	fprintf(fo, "<Partitions>\n");
+	int n = 0;
 	for (int i = 0; i < header.number_of_partition_entries; i++) {
 		efi_entry entry = *(entries + i);
 		if (entry.starting_lba == 0 && entry.ending_lba == 0) {
-			*part_count_ptr = i;
+			n = i;
 			break;
 		}
+	}
+	for (int i = 0; i < n; i++) {
+		efi_entry entry = *(entries + i);
 		copy_from_wstr((*(ptable + i)).name, 36, (uint16_t*)entry.partition_name);
 		uint64_t lba_count = entry.ending_lba - entry.starting_lba + 1;
 		(*(ptable + i)).size = lba_count * real_SECTOR_SIZE;
 		printf("%3d %36s %lldMB\n", i, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
-		if (strcmp((*(ptable + i)).name, "userdata")) fprintf(fo, "\t<Partition id=\"%s\" size=\"%d\"/>\n", (*(ptable + i)).name, (int)((*(ptable + i)).size >> 20));
-		else fprintf(fo, "\t<Partition id=\"%s\" size=\"0xFFFFFFFF\"/>\n", (*(ptable + i)).name);
+		fprintf(fo, "    <Partition id=\"%s\" size=\"", (*(ptable + i)).name);
+		if (i + 1 == n) fprintf(fo, "0x%x\"/>\n", ~0);
+		else fprintf(fo, "%lld\"/>\n", ((*(ptable + i)).size >> 20));
 	}
 	fprintf(fo, "</Partitions>");
 	fclose(fo);
 	free(entries);
 	fclose(fp);
+	*part_count_ptr = n;
 	return 0;
 }
 
