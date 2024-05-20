@@ -383,7 +383,11 @@ int main(int argc, char **argv) {
 			}
 #if !USE_LIBUSB
 		} else if (!strcmp(str2[1], "baudrate")) {
-			if (argcount > 2)  baudrate = strtol(str2[2], NULL, 0);
+			if (argcount > 2)
+			{
+				baudrate = strtol(str2[2], NULL, 0);
+				if (fdl2_loaded) call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
+			}
 			DBG_LOG("baudrate is %d\n", baudrate);
 #endif
 		} else if (!strcmp(str2[1], "path")) {

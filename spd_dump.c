@@ -277,6 +277,7 @@ int main(int argc, char **argv) {
 			if (argc <= 2) ERR_EXIT("baudrate rate\n");
 			else {
 				baudrate = strtol(argv[2], NULL, 0);
+				if (fdl_loaded > 1) call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
 				DBG_LOG("baudrate is %d\n", baudrate);
 			}
 			argc -= 2; argv += 2;
