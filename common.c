@@ -1469,14 +1469,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if (interface_checked) {
 					pDevPort = (PDEV_BROADCAST_PORT)pHdr;
 					DWORD changedPort = (DWORD)my_strtol(pDevPort->dbcp_name + 3, NULL, 0);
-					if (DBT_DEVICEARRIVAL == wParam)
+					if (DBT_DEVICEARRIVAL == wParam) {
 						if (!curPort) curPort = changedPort;
-						else
-							if (curPort != changedPort)
-								printf("second port not supported\n");
-					else
-						if (curPort == changedPort)
-							m_bOpened = -1;
+						else if (curPort != changedPort) printf("second port not supported\n");
+					}
+					else if (curPort == changedPort) m_bOpened = -1;
 				}
 				interface_checked = FALSE;
 				break;
