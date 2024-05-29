@@ -87,9 +87,7 @@ int main(int argc, char **argv) {
 			} else {
 				DBG_LOG("Waiting for connection (%ds)\n", wait / REOPEN_FREQ);
 #if !USE_LIBUSB
-				if (m_DownloadByPoweroff)
-					if (ChangeMode(io))
-						stage = 0;
+				if (m_DownloadByPoweroff) ChangeMode(io);
 				if (!curPort) FindPort();
 				io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
 				if (io->hThread == NULL) {
