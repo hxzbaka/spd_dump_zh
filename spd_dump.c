@@ -344,11 +344,12 @@ int main(int argc, char **argv) {
 			const char *name, *fn; uint64_t offset, size;
 			uint64_t realsize = 0;
 			char name_ab[36];
-			int use_input_name = 1;
+			int use_input_name = 1, verbose = io->verbose;
 			if (argc <= 5) ERR_EXIT("read_part part_name offset size FILE\n(read ubi on nand) read_part system 0 ubi40m system.bin\n");
 
 			name = argv[2];
 			if (selected_ab < 0) select_ab(io);
+			io->verbose = 0;
 			realsize = find_partition_size(io, name);
 			if (!realsize) {
 				if (selected_ab > 0) {
@@ -357,7 +358,8 @@ int main(int argc, char **argv) {
 					use_input_name = 0;
 				}
 				if (!realsize) {
-					DBG_LOG("unable to get part size of %s\n", name);
+					DBG_LOG("part not exist\n");
+					io->verbose = verbose;
 					argc -= 5; argv += 5;
 					continue;
 				}
@@ -368,6 +370,7 @@ int main(int argc, char **argv) {
 			fn = argv[5];
 			if (offset + size < offset)
 				ERR_EXIT("64-bit limit reached\n");
+			io->verbose = verbose;
 			if(use_input_name) dump_partition(io, name, offset, size, fn, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			else dump_partition(io, name_ab, offset, size, fn, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 5; argv += 5;
@@ -391,7 +394,7 @@ int main(int argc, char **argv) {
 						use_input_name = 0;
 					}
 					if (!realsize) {
-						DBG_LOG("unable to get part size of %s\n", name);
+						DBG_LOG("part not exist\n");
 						argc -= 2; argv += 2;
 						continue;
 					}
@@ -412,6 +415,9 @@ int main(int argc, char **argv) {
 				for (i = 0; i < part_count; i++)
 				{
 					char dfile[40];
+					if (!memcmp((*(ptable + i)).name, "blackbox", 8)) continue;
+					else if (!memcmp((*(ptable + i)).name, "cache", 5)) continue;
+					else if (!memcmp((*(ptable + i)).name, "userdata", 8)) continue;
 					sprintf(dfile, "%s.bin", (*(ptable + i)).name);
 					dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 				}
@@ -455,18 +461,24 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(argv[1], "repartition")) {
 			if (argc <= 2) ERR_EXIT("repartition FILE\n");
-			if(!skip_confirm) check_confirm("repartition");
-			repartition(io, argv[2]);
+			if (skip_confirm) repartition(io, argv[2]);
+			else if (check_confirm("repartition")) repartition(io, argv[2]);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "erase_part") || !strcmp(argv[1], "e")) {
 			uint64_t realsize = 0;
 			const char* name = argv[2];
 			char name_ab[36];
-			int use_input_name = 1;
+			int use_input_name = 1, verbose = io->verbose;
 			if (argc <= 2) ERR_EXIT("erase_part part_name\n");
-			if (!skip_confirm) check_confirm("erase partition");
+			if (!skip_confirm)
+				if (!check_confirm("erase partition"))
+				{
+					argc -= 2; argv += 2;
+					continue;
+				}
 			if (selected_ab < 0) select_ab(io);
+			io->verbose = 0;
 			realsize = find_partition_size(io, name);
 			if (!realsize) {
 				if (selected_ab > 0) {
@@ -476,10 +488,12 @@ int main(int argc, char **argv) {
 				}
 				if (!realsize) {
 					DBG_LOG("part not exist\n");
+					io->verbose = verbose;
 					argc -= 2; argv += 2;
 					continue;
 				}
 			}
+			io->verbose = verbose;
 			if(use_input_name) erase_partition(io, name);
 			else erase_partition(io, name_ab);
 			argc -= 2; argv += 2;
@@ -488,10 +502,16 @@ int main(int argc, char **argv) {
 			uint64_t realsize = 0;
 			const char* name = argv[2];
 			char name_ab[36];
-			int use_input_name = 1;
+			int use_input_name = 1, verbose = io->verbose;
 			if (argc <= 3) ERR_EXIT("write_part part_name FILE\n");
-			if (!skip_confirm) check_confirm("write partition");
+			if (!skip_confirm)
+				if (!check_confirm("write partition"))
+				{
+					argc -= 3; argv += 3;
+					continue;
+				}
 			if (selected_ab < 0) select_ab(io);
+			io->verbose = 0;
 			realsize = find_partition_size(io, name);
 			if (!realsize) {
 				if (selected_ab > 0) {
@@ -501,24 +521,26 @@ int main(int argc, char **argv) {
 				}
 				if (!realsize) {
 					DBG_LOG("part not exist\n");
+					io->verbose = verbose;
 					argc -= 3; argv += 3;
 					continue;
 				}
 			}
+			io->verbose = verbose;
 			if (use_input_name) {
-				if (strstr(name, "fixnv1")) load_nv_partition(io, name, argv[3], 4096);
+				if (strstr(name, "nv1")) load_nv_partition(io, name, argv[3], 4096);
 				else load_partition(io, name, argv[3], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			}
 			else {
-				if (strstr(name, "fixnv1")) load_nv_partition(io, name_ab, argv[3], 4096);
+				if (strstr(name, "nv1")) load_nv_partition(io, name_ab, argv[3], 4096);
 				else load_partition(io, name_ab, argv[3], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			}
 			argc -= 3; argv += 3;
 
 		} else if (!strcmp(argv[1], "write_parts")) {
 			if (argc <= 2) ERR_EXIT("write_parts save_location\n");
-			if (!skip_confirm) check_confirm("write all partitions");
-			load_partitions(io, argv[2], blk_size ? blk_size : DEFAULT_BLK_SIZE);
+			if (skip_confirm) load_partitions(io, argv[2], blk_size ? blk_size : DEFAULT_BLK_SIZE);
+			else if (check_confirm("write all partitions")) load_partitions(io, argv[2], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "read_pactime")) {
@@ -530,6 +552,22 @@ int main(int argc, char **argv) {
 			blk_size = strtol(argv[2], NULL, 0);
 			blk_size = blk_size < 0 ? 0 :
 					blk_size > 0xffff ? 0xffff : blk_size;
+			argc -= 2; argv += 2;
+
+		} else if (!strcmp(argv[1], "verity")) {
+			if (argc <= 2) ERR_EXIT("verity {0,1}\n");
+			if (atoi(argv[2])) dm_enable(io, blk_size ? blk_size : DEFAULT_BLK_SIZE);
+			else
+			{
+				DBG_LOG("Warning: disable dm-verity needs a write-verification-disabled FDL2\n");
+				if (!skip_confirm)
+					if (!check_confirm("disable dm-verity"))
+					{
+						argc -= 2; argv += 2;
+						continue;
+					}
+				dm_disable(io, blk_size ? blk_size : DEFAULT_BLK_SIZE);
+			}
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(argv[1], "skip_confirm")) {
@@ -620,6 +658,7 @@ int main(int argc, char **argv) {
 			DBG_LOG("reset\n");
 			DBG_LOG("poweroff\n");
 			DBG_LOG("timeout ms\n");
+			DBG_LOG("verity {0,1}\n\tdisable/enable dm-verity\n");
 			DBG_LOG("skip_confirm {0,1}\n");
 			DBG_LOG("rawdata {0,1,2}\n\tfdl2 stage only\n");
 			DBG_LOG("blk_size byte\n\tfdl2 stage only, max is 65535\n");
