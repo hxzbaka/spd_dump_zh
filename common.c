@@ -966,7 +966,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 			free(ptable);
 			return NULL;
 		}
-		FILE *fpkt;
+		FILE* fpkt;
 		if (savepath[0]) {
 			char fix_fn[1024];
 			sprintf(fix_fn, "%s/sprdpart.bin", savepath);
@@ -1729,101 +1729,67 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam)
 	return 0;
 }
 #if !USE_LIBUSB
-typedef enum
+void ChangeMode(spdio_t* io, int ms, int bootmode)
 {
-	CHANNEL_TYPE_COM = 0,
-	CHANNEL_TYPE_SOCKET = 1,
-	CHANNEL_TYPE_FILE = 2,
-	CHANNEL_TYPE_USBMON = 3         // USB monitor
-}CHANNEL_TYPE;
+	if (bootmode >= 0x80) ERR_EXIT("mode not exist\n");
+	HANDLE hSerial;
+	char portName[8];
+	DCB dcbSerialParams = { 0 };
+	COMMTIMEOUTS timeouts = { 0 };
+	DWORD bytes_written, bytes_read;
 
-typedef struct _CHANNEL_ATTRIBUTE
-{
-	CHANNEL_TYPE ChannelType;
-
-	union {
-		// ComPort
-		struct {
-			DWORD  dwPortNum;
-			DWORD  dwBaudRate;
-		} Com;
-
-		// Socket
-		struct {
-			DWORD dwPort;
-			DWORD dwIP;
-			DWORD dwFlag; //[in]: 0, Server; 1, Client; [out]: client ID.		               
-		} Socket;
-
-		// File
-		struct {
-			DWORD  dwPackSize;
-			DWORD  dwPackFreq;
-			WCHAR* pFilePath;
-		} File;
-	};
-
-} CHANNEL_ATTRIBUTE, * PCHANNEL_ATTRIBUTE;
-
-typedef const PCHANNEL_ATTRIBUTE PCCHANNEL_ATTRIBUTE;
-
-typedef void* (*SP_CreatePhoneFunc)(void* pLogUtil);
-typedef void (*SP_ReleasePhoneFunc)(void* hDiagPhone);
-typedef int (*SP_BeginPhoneTestFunc)(void* hDiagPhone, PCCHANNEL_ATTRIBUTE pOpenArgument);
-typedef int (*SP_EndPhoneTestFunc)(void* hDiagPhone);
-typedef int (*SP_GetUsbPortFunc)(void* hDiagPhone);
-typedef int (*SP_EnterModeProcessFunc)(void* hDiagPhone, BOOL bUsbDevice, int nExpPort, int ePhoneMode, HANDLE hMonitorEvent, unsigned long ulTimeOut);
-
-SP_CreatePhoneFunc SP_CreatePhonePtr = NULL;
-SP_ReleasePhoneFunc SP_ReleasePhonePtr = NULL;
-SP_BeginPhoneTestFunc SP_BeginPhoneTestPtr = NULL;
-SP_EndPhoneTestFunc SP_EndPhoneTestPtr = NULL;
-SP_GetUsbPortFunc SP_GetUsbPortPtr = NULL;
-SP_EnterModeProcessFunc SP_EnterModeProcessPtr = NULL;
-
-BOOL ChangeMode(int ms)
-{
-	HMODULE m_hSPLib = LoadLibrary(_T("PhoneCommand.dll"));
-	if (m_hSPLib == NULL)
-	{
-		return FALSE;
+	DBG_LOG("Waiting for connection (%ds)\n", ms / 1000);
+	for (int i = 0; ; i++) {
+		if (curPort) break;
+		if (100 * i >= ms) ERR_EXIT("find port failed\n");
+		usleep(100000);
 	}
 
-	SP_CreatePhonePtr = (SP_CreatePhoneFunc)GetProcAddress(m_hSPLib, "SP_CreatePhone");
-	SP_ReleasePhonePtr = (SP_ReleasePhoneFunc)GetProcAddress(m_hSPLib, "SP_ReleasePhone");
-	SP_BeginPhoneTestPtr = (SP_BeginPhoneTestFunc)GetProcAddress(m_hSPLib, "SP_BeginPhoneTest");
-	SP_EndPhoneTestPtr = (SP_EndPhoneTestFunc)GetProcAddress(m_hSPLib, "SP_EndPhoneTest");
-	SP_GetUsbPortPtr = (SP_GetUsbPortFunc)GetProcAddress(m_hSPLib, "SP_GetUsbPort");
-	SP_EnterModeProcessPtr = (SP_EnterModeProcessFunc)GetProcAddress(m_hSPLib, "SP_EnterModeProcess");
+	if (curPort < 10)  sprintf(portName, "COM%ld", curPort);
+	else sprintf(portName, "\\\\.\\COM%ld", curPort);
+	hSerial = CreateFileA(portName,
+		GENERIC_READ | GENERIC_WRITE,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+	if (hSerial == INVALID_HANDLE_VALUE) ERR_EXIT("Error opening serial port\n");
+	dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+	if (!GetCommState(hSerial, &dcbSerialParams)) ERR_EXIT("Error getting device state\n");
+	dcbSerialParams.BaudRate = CBR_115200;
+	dcbSerialParams.ByteSize = 8;
+	dcbSerialParams.StopBits = ONESTOPBIT;
+	dcbSerialParams.Parity = NOPARITY;
+	dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
+	dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;
+	if (!SetCommState(hSerial, &dcbSerialParams)) ERR_EXIT("Error setting device parameters\n");
+	timeouts.ReadIntervalTimeout = 50;
+	timeouts.ReadTotalTimeoutConstant = 50;
+	timeouts.ReadTotalTimeoutMultiplier = 10;
+	timeouts.WriteTotalTimeoutConstant = 50;
+	timeouts.WriteTotalTimeoutMultiplier = 10;
+	if (!SetCommTimeouts(hSerial, &timeouts)) ERR_EXIT("Error setting timeouts\n");
 
-	void* hDiagPhone = SP_CreatePhonePtr(NULL);
-	CHANNEL_ATTRIBUTE ca;
-	ca.ChannelType = CHANNEL_TYPE_USBMON;
-	SP_BeginPhoneTestPtr(hDiagPhone, &ca);
-
-	HANDLE  m_hEnterModeSuccess = CreateEvent(NULL, TRUE, FALSE, NULL);
-	if (m_hEnterModeSuccess == NULL) return FALSE;
-	ResetEvent(m_hEnterModeSuccess);
-	SP_EnterModeProcessPtr(hDiagPhone, TRUE, -1, 2, m_hEnterModeSuccess, 0); //0x82 is download mode
-
-	ULONGLONG tBegin;
-	ULONGLONG tCur;
-	tBegin = GetTickCount64();
-	do
+	uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
+	payload[8] = bootmode + 0x80;
+	if (io->verbose >= 2) {
+		DBG_LOG("send (%d):\n", 10);
+		print_mem(stderr, payload, 10);
+	}
+	if (!WriteFile(hSerial, payload, 10, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
+	if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) CloseHandle(hSerial);
+	for (int i = 0; ; i++)
 	{
-		tCur = GetTickCount64();
-		DWORD dwRet = WaitForSingleObject(m_hEnterModeSuccess, 1000);
-		if (WAIT_OBJECT_0 == dwRet)
+		if (m_bOpened == -1)
 		{
-			curPort = SP_GetUsbPortPtr(hDiagPhone);
-			SP_EndPhoneTestPtr(hDiagPhone);
-			SP_ReleasePhonePtr(hDiagPhone);
-			FreeLibrary(m_hSPLib);
-			m_hSPLib = NULL;
-			return TRUE;
+			curPort = 0;
+			m_bOpened = 0;
+			return;
 		}
-	} while ((tCur - tBegin) < ms);
-	return FALSE;
+		if (100 * i >= ms) ERR_EXIT("kick reboot timeout\n");
+		usleep(100000);
+	}
 }
 #endif
 #endif

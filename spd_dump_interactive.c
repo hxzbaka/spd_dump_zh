@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
 	char str1[ARGC_MAX * ARGC_LEN];
 	char str2[ARGC_MAX][ARGC_LEN];
 	char execfile[40];
-	int m_DownloadByPoweroff = 0;
+	int bootmode = -1;
 	int part_count = 0;
 	partition_t* ptable = NULL;
 #if !USE_LIBUSB
@@ -66,24 +66,32 @@ int main(int argc, char **argv) {
 #if !USE_LIBUSB
 		} else if (!strcmp(argv[1], "--kick")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
-			m_DownloadByPoweroff = 1;
+			bootmode = 2;
 			argc -= 1; argv += 1;
+		} else if (!strcmp(argv[1], "--kickto")) {
+			if (argc <= 2) ERR_EXIT("bad option\n");
+			bootmode = atoi(argv[2]);
+			argc -= 2; argv += 2;
 #endif
 		} else break;
 	}
 
-	DBG_LOG("Waiting for connection (%ds)\n", wait / REOPEN_FREQ);
-#if !USE_LIBUSB
-	if (m_DownloadByPoweroff) {
-		ChangeMode(wait / REOPEN_FREQ * 1000);
-		wait = 10 * REOPEN_FREQ;
-	}
-	if (!curPort) FindPort();
+#if _WIN32
 	io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
 	if (io->hThread == NULL) {
 		return -1;
 	}
 #endif
+#if !USE_LIBUSB
+	if (!curPort) FindPort();
+	if (bootmode >= 0)
+	{
+		if (curPort) ERR_EXIT("kick feature needs program running before connecting device to PC\n");
+		else ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode);
+		wait = 10 * REOPEN_FREQ;
+	}
+#endif
+	DBG_LOG("Waiting for connection (%ds)\n", wait / REOPEN_FREQ);
 	for (i = 0; ; i++) {
 #if USE_LIBUSB
 		io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
@@ -91,7 +99,7 @@ int main(int argc, char **argv) {
 		if (i >= wait)
 			ERR_EXIT("libusb_open_device failed\n");
 #else
-		if(io->verbose) DBG_LOG("CurTime: %.1f, CurPort: %d\n", (float)i / REOPEN_FREQ, curPort);
+		if (io->verbose) DBG_LOG("CurTime: %.1f, CurPort: %d\n", (float)i / REOPEN_FREQ, curPort);
 		if (curPort) break;
 		if (i >= wait)
 			ERR_EXIT("find port failed\n");
@@ -520,6 +528,22 @@ int main(int argc, char **argv) {
 						else if (!memcmp((*(ptable + i)).name, "userdata", 8)) continue;
 						sprintf(dfile, "%s.bin", (*(ptable + i)).name);
 						dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
+				}
+				continue;
+			}
+			else if (!strcmp(name, "all_lite")) {
+				dump_partition(io, "splloader", 0, 256 * 1024, "splloader.bin", blk_size ? blk_size : DEFAULT_BLK_SIZE);
+				for (i = 0; i < part_count; i++)
+				{
+					char dfile[40];
+					size_t namelen = strlen((*(ptable + i)).name);
+					if (!memcmp((*(ptable + i)).name, "blackbox", 8)) continue;
+					else if (!memcmp((*(ptable + i)).name, "cache", 5)) continue;
+					else if (!memcmp((*(ptable + i)).name, "userdata", 8)) continue;
+					if (selected_ab == 1 && namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_b")) continue;
+					else if (selected_ab == 2 && namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_a")) continue;
+					sprintf(dfile, "%s.bin", (*(ptable + i)).name);
+					dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 				}
 				continue;
 			}
