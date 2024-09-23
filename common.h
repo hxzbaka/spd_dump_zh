@@ -4,7 +4,7 @@
 #define _FILE_OFFSET_BITS 64
 
 #define ARGC_MAX 8
-#define ARGC_LEN 384
+#define ARGV_LEN 384
 
 #include <stdlib.h>
 #include <stdio.h>

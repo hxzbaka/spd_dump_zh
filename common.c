@@ -157,7 +157,7 @@ void find_endpoints(libusb_device_handle* dev_handle, int result[2]) {
 
 #define RECV_BUF_LEN (0x8000)
 
-char savepath[ARGC_LEN] = { 0 };
+char savepath[ARGV_LEN] = { 0 };
 DA_INFO_T Da_Info;
 
 spdio_t* spdio_init(int flags) {
@@ -1481,8 +1481,8 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 void load_partitions(spdio_t* io, const char* path, int blk_size) {
 	char* fn;
 #if _WIN32
-	char searchPath[ARGC_LEN];
-	snprintf(searchPath, ARGC_LEN, "%s\\*", path);
+	char searchPath[ARGV_LEN];
+	snprintf(searchPath, ARGV_LEN, "%s\\*", path);
 
 	WIN32_FIND_DATAA findData;
 	HANDLE hFind = FindFirstFileA(searchPath, &findData);
