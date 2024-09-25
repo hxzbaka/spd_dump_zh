@@ -1737,66 +1737,99 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam)
 	return 0;
 }
 #if !USE_LIBUSB
-void ChangeMode(spdio_t* io, int ms, int bootmode)
+void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 {
 	if (bootmode >= 0x80) ERR_EXIT("mode not exist\n");
 	HANDLE hSerial;
-	char portName[8];
+	char portName[11];
 	DCB dcbSerialParams = { 0 };
 	COMMTIMEOUTS timeouts = { 0 };
 	DWORD bytes_written, bytes_read;
+	int done = 0;
 
-	DBG_LOG("Waiting for connection (%ds)\n", ms / 1000);
-	for (int i = 0; ; i++) {
-		if (curPort) break;
-		if (100 * i >= ms) ERR_EXIT("find port failed\n");
-		usleep(100000);
-	}
-
-	if (curPort < 10)  sprintf(portName, "COM%ld", curPort);
-	else sprintf(portName, "\\\\.\\COM%ld", curPort);
-	hSerial = CreateFileA(portName,
-		GENERIC_READ | GENERIC_WRITE,
-		0,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL);
-	if (hSerial == INVALID_HANDLE_VALUE) ERR_EXIT("Error opening serial port\n");
-	dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
-	if (!GetCommState(hSerial, &dcbSerialParams)) ERR_EXIT("Error getting device state\n");
-	dcbSerialParams.BaudRate = CBR_115200;
-	dcbSerialParams.ByteSize = 8;
-	dcbSerialParams.StopBits = ONESTOPBIT;
-	dcbSerialParams.Parity = NOPARITY;
-	dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
-	dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;
-	if (!SetCommState(hSerial, &dcbSerialParams)) ERR_EXIT("Error setting device parameters\n");
-	timeouts.ReadIntervalTimeout = 50;
-	timeouts.ReadTotalTimeoutConstant = 50;
-	timeouts.ReadTotalTimeoutMultiplier = 10;
-	timeouts.WriteTotalTimeoutConstant = 50;
-	timeouts.WriteTotalTimeoutMultiplier = 10;
-	if (!SetCommTimeouts(hSerial, &timeouts)) ERR_EXIT("Error setting timeouts\n");
-
-	uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
-	payload[8] = bootmode + 0x80;
-	if (io->verbose >= 2) {
-		DBG_LOG("send (%d):\n", 10);
-		print_mem(stderr, payload, 10);
-	}
-	if (!WriteFile(hSerial, payload, 10, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
-	if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) CloseHandle(hSerial);
-	for (int i = 0; ; i++)
+	while (!done)
 	{
-		if (m_bOpened == -1)
-		{
-			curPort = 0;
-			m_bOpened = 0;
-			return;
+		DBG_LOG("Waiting for connection (%ds)\n", ms / 1000);
+		for (int i = 0; ; i++) {
+			if (curPort) break;
+			if (100 * i >= ms) ERR_EXIT("find port failed\n");
+			usleep(100000);
 		}
-		if (100 * i >= ms) ERR_EXIT("kick reboot timeout\n");
-		usleep(100000);
+
+		if (curPort < 10)  sprintf(portName, "COM%ld", curPort);
+		else sprintf(portName, "\\\\.\\COM%ld", curPort);
+		hSerial = CreateFileA(portName,
+			GENERIC_READ | GENERIC_WRITE,
+			0,
+			NULL,
+			OPEN_EXISTING,
+			FILE_ATTRIBUTE_NORMAL,
+			NULL);
+		if (hSerial == INVALID_HANDLE_VALUE) ERR_EXIT("Error opening serial port\n");
+		dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
+		if (!GetCommState(hSerial, &dcbSerialParams)) ERR_EXIT("Error getting device state\n");
+		dcbSerialParams.BaudRate = CBR_115200;
+		dcbSerialParams.ByteSize = 8;
+		dcbSerialParams.StopBits = ONESTOPBIT;
+		dcbSerialParams.Parity = NOPARITY;
+		dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
+		dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;
+		if (!SetCommState(hSerial, &dcbSerialParams)) ERR_EXIT("Error setting device parameters\n");
+		timeouts.ReadIntervalTimeout = 50;
+		timeouts.ReadTotalTimeoutConstant = 50;
+		timeouts.ReadTotalTimeoutMultiplier = 10;
+		timeouts.WriteTotalTimeoutConstant = 50;
+		timeouts.WriteTotalTimeoutMultiplier = 10;
+		if (!SetCommTimeouts(hSerial, &timeouts)) ERR_EXIT("Error setting timeouts\n");
+
+		uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
+		if (at) payload[8] = 0x81;
+		else payload[8] = bootmode + 0x80;
+		if (io->verbose >= 2) {
+			DBG_LOG("send (%d):\n", 10);
+			print_mem(stderr, payload, 10);
+		}
+		if (!WriteFile(hSerial, payload, 10, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
+		if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) CloseHandle(hSerial);
+		else
+		{
+			uint8_t cali_ok[] = { 8,0,0xd5,0 };
+			if (io->verbose >= 2) {
+				DBG_LOG("read (%d):\n", bytes_read);
+				print_mem(stderr, io->recv_buf, bytes_read);
+			}
+			if (memcmp(io->recv_buf + bytes_read - 5, cali_ok, 4)) ERR_EXIT("Unknown response\n");
+
+			uint8_t autod[] = { 0x7e,0,0,0,0,0x20,0,0x68,0,0x41,0x54,0x2b,0x53,0x50,0x52,0x45,0x46,0x3d,0x22,0x41,0x55,0x54,0x4f,0x44,0x4c,0x4f,0x41,0x44,0x45,0x52,0x22,0xd,0xa,0x7e };
+			if (io->verbose >= 2) {
+				DBG_LOG("send (%d):\n", 34);
+				print_mem(stderr, autod, 34);
+			}
+			if (!WriteFile(hSerial, autod, 34, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
+			if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) ERR_EXIT("read response from cali mode failed\n");
+			else
+			{
+				uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
+				if (io->verbose >= 2) {
+					DBG_LOG("read (%d):\n", bytes_read);
+					print_mem(stderr, io->recv_buf, bytes_read);
+				}
+				if (memcmp(io->recv_buf + bytes_read - 7, ok, 6)) ERR_EXIT("Unknown response\n");
+				else done = 1;
+			}
+		}
+		for (int i = 0; ; i++)
+		{
+			if (m_bOpened == -1)
+			{
+				curPort = 0;
+				m_bOpened = 0;
+				break;
+			}
+			if (100 * i >= ms) ERR_EXIT("kick reboot timeout\n");
+			usleep(100000);
+		}
+		if (!at) done = 1;
 	}
 }
 #endif

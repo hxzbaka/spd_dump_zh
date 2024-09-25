@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 	char str1[(ARGC_MAX - 1) * ARGV_LEN];
 	char **str2;
 	char execfile[40];
-	int bootmode = -1;
+	int bootmode = -1, at;
 	int part_count = 0;
 	partition_t* ptable = NULL;
 #if !USE_LIBUSB
@@ -65,11 +65,11 @@ int main(int argc, char **argv) {
 #if !USE_LIBUSB
 		} else if (!strcmp(argv[1], "--kick")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
-			bootmode = 2;
+			at = 1;
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "--kickto")) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
-			bootmode = atoi(argv[2]);
+			bootmode = atoi(argv[2]); at = 0;
 			argc -= 2; argv += 2;
 #endif
 		} else break;
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
 	if (bootmode >= 0)
 	{
 		if (curPort) ERR_EXIT("kick feature needs program running before connecting device to PC\n");
-		else ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode);
+		else ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
 		wait = 10 * REOPEN_FREQ;
 	}
 #endif
@@ -225,6 +225,7 @@ int main(int argc, char **argv) {
 			}
 			argcount++;
 		}
+		if (argcount == 1) { str2[1] = ""; in_quote = -1; }
 
 		if (!strncmp(str2[1], "sendloop", 8)) {
 			const char* fn; uint32_t addr = 0; FILE* fi;
@@ -273,7 +274,7 @@ int main(int argc, char **argv) {
 					blk_size ? blk_size : 528);
 			} else {
 				send_file(io, fn, addr, end_data, 528);
-				if (addr == 0x5500 || addr == 0x65000800) highspeed = 1;
+				if (addr == 0x5500 || addr == 0x65000800) { highspeed = 1; baudrate = 921600; }
 
 				i = 0;
 				if (exec_addr) {
