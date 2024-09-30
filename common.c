@@ -265,6 +265,7 @@ void encode_msg(spdio_t* io, int type, const void* data, size_t len) {
 	if (type == BSL_CMD_CHECK_BAUD) {
 		memset(io->enc_buf, HDLC_HEADER, len);
 		io->enc_len = len;
+		*(uint8_t*)(io->raw_buf) = HDLC_HEADER;
 		return;
 	}
 
@@ -334,6 +335,7 @@ int send_msg(spdio_t* io) {
 	return ret;
 }
 
+extern int fdl1_loaded;
 int recv_msg_orig(spdio_t* io) {
 	int a, pos, len, chk;
 	int esc = 0, nread = 0, head_found = 0, plen = 6;
@@ -419,14 +421,35 @@ int recv_msg_orig(spdio_t* io) {
 	if (nread != plen)
 	{ DBG_LOG("bad length (%d, expected %d)\n", nread, plen); return 0; }
 
-	if (io->flags & FLAGS_CRC16)
-		chk = spd_crc16(0, io->raw_buf, plen - 2);
-	else
-		chk = spd_checksum(0, io->raw_buf, plen - 2, CHK_ORIG);
-
 	a = READ16_BE(io->raw_buf + plen - 2);
-	if (a != chk)
-	{ DBG_LOG("bad checksum (0x%04x, expected 0x%04x)\n", a, chk); return 0; }
+	if (fdl1_loaded == 0 && !(io->flags & FLAGS_CRC16))
+	{		
+		int chk1, chk2;
+		chk2 = spd_checksum(0, io->raw_buf, plen - 2, CHK_ORIG);
+		if (a == chk2) fdl1_loaded = 1;
+		else
+		{
+			chk1 = spd_crc16(0, io->raw_buf, plen - 2);
+			if (a == chk1) io->flags |= FLAGS_CRC16;
+			else
+			{
+				DBG_LOG("bad checksum (0x%04x, expected 0x%04x or 0x%04x)\n", a, chk1, chk2);
+				return 0;
+			}
+		}
+	}
+	else
+	{
+		if (io->flags & FLAGS_CRC16)
+			chk = spd_crc16(0, io->raw_buf, plen - 2);
+		else
+			chk = spd_checksum(0, io->raw_buf, plen - 2, CHK_ORIG);
+		if (a != chk)
+		{
+			DBG_LOG("bad checksum (0x%04x, expected 0x%04x)\n", a, chk);
+			return 0;
+		}
+	}
 
 	if (io->verbose == 1)
 		DBG_LOG("recv: type = 0x%02x, size = %d\n",
@@ -1278,7 +1301,7 @@ void find_partition_size_new(spdio_t* io, const char* name, unsigned long long *
 
 uint64_t find_partition_size(spdio_t* io, const char* name) {
 	uint32_t t32; uint64_t n64; unsigned long long offset = 0;
-	int ret, i, start = 47;
+	int ret, i, start = 47, end = 20;
 
 	if (selected_ab > 0 && strcmp(name, "uboot") == 0) return 0;
 	if (strstr(name, "fixnv")) {
@@ -1293,12 +1316,13 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 	find_partition_size_new(io, name, &offset);
 	if (offset) return offset;
 
+	if (!strcmp(name, "ubipac")) end = 10;
 	select_partition(io, name, 1ll << (start + 1), 1, BSL_CMD_READ_START);
 	if (send_and_check(io)) return 0;
 
-	for (i = start; i >= 20; i--) {
+	for (i = start; i >= end; i--) {
 		uint32_t data[3];
-		n64 = offset + (1ll << i) - (1 << 20);
+		n64 = offset + (1ll << i) - (1 << end);
 		WRITE32_LE(data, 4);
 		WRITE32_LE(data + 1, n64);
 		t32 = n64 >> 32;
@@ -1310,7 +1334,7 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 		if (!ret) ERR_EXIT("timeout reached\n");
 		ret = recv_type(io);
 		if (ret != BSL_REP_READ_FLASH) continue;
-		offset = n64 + (1 << 20);
+		offset = n64 + (1 << end);
 	}
 	DBG_LOG("partition_size_pc: %s, 0x%llx\n", name, offset);
 	encode_msg(io, BSL_CMD_READ_END, NULL, 0);

@@ -20,19 +20,20 @@ extern char savepath[ARGV_LEN];
 extern DA_INFO_T Da_Info;
 int gpt_failed = 1;
 int m_bOpened = 0;
+int fdl1_loaded = 0;
 int fdl2_executed = 0;
 int selected_ab = -1;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i, in_quote;
 	int wait = 30 * REOPEN_FREQ;
-	int fdl1_loaded = 0, argcount = 0, exec_addr = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
+	int argcount = 0, exec_addr = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
 	int keep_charge = 1, end_data = 1, blk_size = 0, skip_confirm = 1, baudrate = 0, highspeed = 0;
 	char *temp;
 	char str1[(ARGC_MAX - 1) * ARGV_LEN];
 	char **str2;
 	char execfile[40];
-	int bootmode = -1, at;
+	int bootmode = -1, at = 0;
 	int part_count = 0;
 	partition_t* ptable = NULL;
 #if !USE_LIBUSB
@@ -83,7 +84,7 @@ int main(int argc, char **argv) {
 #endif
 #if !USE_LIBUSB
 	if (!curPort) FindPort();
-	if (bootmode >= 0)
+	if (at || bootmode >= 0)
 	{
 		if (curPort) ERR_EXIT("kick feature needs program running before connecting device to PC\n");
 		else ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
@@ -126,24 +127,50 @@ int main(int argc, char **argv) {
 				libusb_error_name(ret));
 	DBG_LOG("libusb_control_transfer ok\n");
 #endif
-	/* Bootloader (chk = crc16) */
-	io->flags |= FLAGS_CRC16;
+	io->flags &= ~FLAGS_CRC16;
+	encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+	send_msg(io);
+	recv_msg(io);
+	ret = recv_type(io);
+	if (ret == BSL_REP_ACK || ret == BSL_REP_VER || ret == BSL_REP_VERIFY_ERROR)
+	{
+		if (ret == BSL_REP_VER)
+		{
+			if (fdl1_loaded == 1)
+			{
+				DBG_LOG("CHECK_BAUD FDL1\n");
+				if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) fdl2_executed = -1;
+			}
+			else
+			{
+				DBG_LOG("CHECK_BAUD bootrom\n");
+				if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) { exec_addr = 0; fdl1_loaded = -1; fdl2_executed = -1; }
+			}
+			DBG_LOG("BSL_REP_VER: ");
+			print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
 
-	switch (stage) {
-	case 0:
-		encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-		if (send_and_check(io)) exit(1);
-		DBG_LOG("CMD_CONNECT bootrom\n");
-		break;
-	case 1:
-		io->flags &= ~FLAGS_CRC16;
-		encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-		if (send_and_check(io)) exit(1);
-		DBG_LOG("CMD_CONNECT FDL1\n");
-		fdl1_loaded = 1;
-		break;
-	case 2:
-		io->flags &= ~FLAGS_CRC16;
+			encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+			if (send_and_check(io)) exit(1);
+		}
+		else if (ret == BSL_REP_VERIFY_ERROR)
+		{
+			io->flags |= FLAGS_CRC16;
+			encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+			if (send_and_check(io)) exit(1);
+		}
+
+		if (fdl1_loaded == 1)
+		{
+			DBG_LOG("CMD_CONNECT FDL1\n");
+			if (keep_charge) {
+				encode_msg(io, BSL_CMD_KEEP_CHARGE, NULL, 0);
+				if (!send_and_check(io)) DBG_LOG("KEEP_CHARGE FDL1\n");
+			}
+		}
+		else DBG_LOG("CMD_CONNECT bootrom\n");
+	}
+	else if (ret == BSL_REP_UNSUPPORTED_COMMAND)
+	{
 		encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
 		if (!send_and_check(io)) {
 			io->flags &= ~FLAGS_TRANSCODE;
@@ -151,24 +178,8 @@ int main(int argc, char **argv) {
 		}
 		fdl1_loaded = 1;
 		fdl2_executed = 1;
-		break;
-	default:
-		encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-		send_msg(io);
-		recv_msg(io);
-		if (recv_type(io) != BSL_REP_VER)
-			ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
-		DBG_LOG("CHECK_BAUD bootrom\n");
-
-		DBG_LOG("BSL_REP_VER: ");
-		print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
-		if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) { exec_addr = 0; fdl1_loaded = -1; fdl2_executed = -1; }
-
-		encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-		if (send_and_check(io)) exit(1);
-		DBG_LOG("CMD_CONNECT bootrom\n");
-		break;
 	}
+	else ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 
 	while (1) {
 		if (argc > 1)
@@ -229,7 +240,7 @@ int main(int argc, char **argv) {
 
 		if (!strncmp(str2[1], "sendloop", 8)) {
 			const char* fn; uint32_t addr = 0; FILE* fi;
-			if (argcount <= 3) { DBG_LOG("send FILE addr\n"); argc -= 3; argv += 3; continue; }
+			if (argcount <= 3) { DBG_LOG("sendloop FILE addr\n"); argc -= 3; argv += 3; continue; }
 
 			fn = str2[2];
 			fi = fopen(fn, "r");
@@ -259,10 +270,6 @@ int main(int argc, char **argv) {
 			if (argcount <= 3) { DBG_LOG("fdl FILE addr\n"); argc -= 3; argv += 3; continue; }
 
 			fn = str2[2];
-			fi = fopen(fn, "r");
-			if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
-			else fclose(fi);
-
 			addr = strtoll(str2[3], NULL, 0);
 
 			if (fdl2_executed > 0) {
@@ -270,10 +277,21 @@ int main(int argc, char **argv) {
 				argc -= 3; argv += 3;
 				continue;
 			} else if (fdl1_loaded > 0) {
-				send_file(io, fn, addr, end_data,
-					blk_size ? blk_size : 528);
+				if (fdl2_executed != -1)
+				{
+					fi = fopen(fn, "r");
+					if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
+					else fclose(fi);
+					send_file(io, fn, addr, end_data, blk_size ? blk_size : 528);
+				}
 			} else {
-				send_file(io, fn, addr, end_data, 528);
+				if (fdl1_loaded != -1)
+				{
+					fi = fopen(fn, "r");
+					if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
+					else fclose(fi);
+					send_file(io, fn, addr, end_data, 528);
+				}
 				if (addr == 0x5500 || addr == 0x65000800) { highspeed = 1; baudrate = 921600; }
 
 				i = 0;
@@ -302,6 +320,7 @@ int main(int argc, char **argv) {
 
 				DBG_LOG("BSL_REP_VER: ");
 				print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
+				if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) fdl2_executed = -1;
 
 #if FDL1_DUMP_MEM
 				//read dump mem
