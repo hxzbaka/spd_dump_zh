@@ -26,10 +26,10 @@
 DWORD WINAPI ThrdFunc(LPVOID lpParam);
 #if UNICODE
 #define my_strstr wcsstr
-#define my_strtol wcstol
+#define my_strtoul wcstoul
 #else
 #define my_strstr strstr
-#define my_strtol strtol
+#define my_strtoul strtoul
 #endif
 #else
 #include <dirent.h>

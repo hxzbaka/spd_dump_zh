@@ -29,7 +29,7 @@ BOOL FindPort(void)
 			char portNum_str[4];
 			strncpy(portNum_str, result + strlen(USB_DL) + 5, 3);
 			portNum_str[3] = 0;
-			curPort = (DWORD)strtol(portNum_str, NULL, 0);
+			curPort = strtoul(portNum_str, NULL, 0);
 			break;
 		}
 
@@ -425,12 +425,12 @@ int recv_msg_orig(spdio_t* io) {
 	if (fdl1_loaded == 0 && !(io->flags & FLAGS_CRC16))
 	{		
 		int chk1, chk2;
-		chk2 = spd_checksum(0, io->raw_buf, plen - 2, CHK_ORIG);
-		if (a == chk2) fdl1_loaded = 1;
+		chk1 = spd_crc16(0, io->raw_buf, plen - 2);
+		if (a == chk1) io->flags |= FLAGS_CRC16;
 		else
 		{
-			chk1 = spd_crc16(0, io->raw_buf, plen - 2);
-			if (a == chk1) io->flags |= FLAGS_CRC16;
+			chk2 = spd_checksum(0, io->raw_buf, plen - 2, CHK_ORIG);
+			if (a == chk2) fdl1_loaded = 1;
 			else
 			{
 				DBG_LOG("bad checksum (0x%04x, expected 0x%04x or 0x%04x)\n", a, chk1, chk2);
@@ -464,14 +464,17 @@ int recv_msg(spdio_t* io) {
 	for (;;) {
 		ret = recv_msg_orig(io);
 		// only retry in fdl2 stage
-		if ((!ret) && fdl2_executed) {
+		if (!ret) {
+			if (fdl2_executed) {
 #if !USE_LIBUSB
-			call_Clear(io->handle);
+				call_Clear(io->handle);
 #endif
-			send_msg(io);
-			ret = recv_msg_orig(io);
+				send_msg(io);
+				ret = recv_msg_orig(io);
+				if (!ret) break;
+			}
+			else break;
 		}
-		if (!ret) break;
 		if (recv_type(io) != BSL_REP_LOG) break;
 		DBG_LOG("BSL_REP_LOG: ");
 		print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
@@ -689,7 +692,7 @@ void select_partition(spdio_t* io, const char* name,
 void print_progress_bar(float progress) {
 	static int completed0 = 0;
 	if (completed0 == PROGRESS_BAR_WIDTH) completed0 = 0;
-	int completed = PROGRESS_BAR_WIDTH * progress;
+	int completed = PROGRESS_BAR_WIDTH * (int)progress;
 	int remaining;
 	if (completed != completed0)
 	{
@@ -753,7 +756,7 @@ uint64_t dump_partition(spdio_t* io,
 
 	for (offset = start; (n64 = start + len - offset); ) {
 		uint32_t data[3];
-		n = n64 > step ? step : n64;
+		n = (uint32_t)(n64 > step ? step : n64);
 
 		WRITE32_LE(data, n);
 		WRITE32_LE(data + 1, offset);
@@ -921,7 +924,7 @@ int gpt_info(partition_t* ptable, const char* fn_pgpt, const char* fn_xml, int* 
 		fclose(fp);
 		return -1;
 	}
-	fseek(fp, header.partition_entry_lba * real_SECTOR_SIZE, SEEK_SET);
+	fseek(fp, (long)header.partition_entry_lba * real_SECTOR_SIZE, SEEK_SET);
 	bytes_read = fread(entries, 1, header.number_of_partition_entries * sizeof(efi_entry), fp);
 	if (bytes_read != (int)(header.number_of_partition_entries * sizeof(efi_entry)))
 		DBG_LOG("only read %d/%d\n", bytes_read, (int)(header.number_of_partition_entries * sizeof(efi_entry)));
@@ -962,7 +965,7 @@ int gpt_info(partition_t* ptable, const char* fn_pgpt, const char* fn_xml, int* 
 
 extern int gpt_failed;
 partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
-	long long size;
+	long size;
 	unsigned i, n = 0;
 	int ret; FILE* fo = NULL; uint8_t* p;
 	partition_t* ptable = malloc(128 * sizeof(partition_t));
@@ -985,7 +988,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		}
 		size = READ16_BE(io->raw_buf + 2);
 		if (size % 0x4c) {
-			DBG_LOG("not divisible by struct size (0x%04llx)\n", size);
+			DBG_LOG("not divisible by struct size (0x%04lx)\n", size);
 			free(ptable);
 			return NULL;
 		}
@@ -1097,7 +1100,7 @@ void load_partition(spdio_t* io, const char* name,
 		if (!rawbuf) ERR_EXIT("malloc failed\n");
 
 		for (offset = 0; (n64 = len - offset); offset += n) {
-			n = n64 > step ? step : n64;
+			n = (unsigned)(n64 > step ? step : n64);
 #if _WIN32
 			if (m_bOpened == -1) {
 				spdio_free(io);
@@ -1134,7 +1137,7 @@ void load_partition(spdio_t* io, const char* name,
 #endif
 		fallback_load:
 		for (offset = 0; (n64 = len - offset); offset += n) {
-			n = n64 > step ? step : n64;
+			n = (unsigned)(n64 > step ? step : n64);
 			if (fread(io->temp_buf, 1, n, fi) != n)
 				ERR_EXIT("fread(load) failed\n");
 			encode_msg(io, BSL_CMD_MIDST_DATA, io->temp_buf, n);
@@ -1301,7 +1304,7 @@ void find_partition_size_new(spdio_t* io, const char* name, unsigned long long *
 
 uint64_t find_partition_size(spdio_t* io, const char* name) {
 	uint32_t t32; uint64_t n64; unsigned long long offset = 0;
-	int ret, i, start = 47, end = 20;
+	int ret, i, end = 20;
 
 	if (selected_ab > 0 && strcmp(name, "uboot") == 0) return 0;
 	if (strstr(name, "fixnv")) {
@@ -1317,12 +1320,13 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 	if (offset) return offset;
 
 	if (!strcmp(name, "ubipac")) end = 10;
-	select_partition(io, name, 1ll << (start + 1), 1, BSL_CMD_READ_START);
+	select_partition(io, name, 128 * 1024, 0, BSL_CMD_READ_START);
 	if (send_and_check(io)) return 0;
 
-	for (i = start; i >= end; i--) {
+	int incrementing = 1;
+	for (i = end; i >= end;) {
 		uint32_t data[3];
-		n64 = offset + (1ll << i) - (1 << end);
+		n64 = offset + (1ll << i) - (1ll << end);
 		WRITE32_LE(data, 4);
 		WRITE32_LE(data + 1, n64);
 		t32 = n64 >> 32;
@@ -1333,8 +1337,20 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 		ret = recv_msg(io);
 		if (!ret) ERR_EXIT("timeout reached\n");
 		ret = recv_type(io);
-		if (ret != BSL_REP_READ_FLASH) continue;
-		offset = n64 + (1 << end);
+		if (incrementing) {
+			if (ret != BSL_REP_READ_FLASH) {
+				if (!n64) break;
+				offset += 1ll << (i - 1);
+				i -= 2;
+				incrementing = 0;
+			}
+			else if (i == 10) i += 11;
+			else i++;
+		}
+		else {
+			if (ret == BSL_REP_READ_FLASH) offset += (1ll << i);
+			i--;
+		}
 	}
 	DBG_LOG("partition_size_pc: %s, 0x%llx\n", name, offset);
 	encode_msg(io, BSL_CMD_READ_END, NULL, 0);
@@ -1401,7 +1417,7 @@ uint64_t str_to_size_ubi(const char* str, int* nand_info) {
 			char suffix = tolower(*end);
 			if (suffix == 'm')
 			{
-				int block = n * (1024 / nand_info[2]) + n * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1;
+				int block = (int)(n * (1024 / nand_info[2]) + n * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1);
 				return 1024 * (nand_info[2] - 2 * nand_info[0]) * block;
 			}
 			else
@@ -1485,7 +1501,7 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 			if (!realsize) { DBG_LOG("unable to get part size of %s\n", partitions[i].name); continue; }
 		}
 		else if (ubi) {
-			int block = partitions[i].size * (1024 / nand_info[2]) + partitions[i].size * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1;
+			int block = (int)(partitions[i].size * (1024 / nand_info[2]) + partitions[i].size * (1024 / nand_info[2]) / (512 / nand_info[1]) + 1);
 			realsize = 1024 * (nand_info[2] - 2 * nand_info[0]) * block;
 		}
 		dump_partition(io, partitions[i].name, 0, realsize, dfile, blk_size);
@@ -1703,7 +1719,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case DBT_DEVTYP_PORT:
 				if (interface_checked) {
 					pDevPort = (PDEV_BROADCAST_PORT)pHdr;
-					DWORD changedPort = (DWORD)my_strtol(pDevPort->dbcp_name + 3, NULL, 0);
+					DWORD changedPort = my_strtoul(pDevPort->dbcp_name + 3, NULL, 0);
 					if (DBT_DEVICEARRIVAL == wParam) {
 						if (!curPort) curPort = changedPort;
 						else if (curPort != changedPort) DBG_LOG("second port not supported\n");

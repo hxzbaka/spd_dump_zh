@@ -26,9 +26,10 @@ int selected_ab = -1;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i, in_quote;
 	int wait = 30 * REOPEN_FREQ;
-	int argcount = 0, exec_addr = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
+	int argcount = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
 	int nand_info[3];
-	int keep_charge = 1, end_data = 1, blk_size = 0, skip_confirm = 1, baudrate = 0, highspeed = 0;
+	int keep_charge = 1, end_data = 1, blk_size = 0, skip_confirm = 1, highspeed = 0;
+	unsigned exec_addr = 0, baudrate = 0;
 	char *temp;
 	char str1[(ARGC_MAX - 1) * ARGV_LEN];
 	char **str2;
@@ -129,57 +130,61 @@ int main(int argc, char **argv) {
 #endif
 	io->flags &= ~FLAGS_CRC16;
 	encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-	send_msg(io);
-	recv_msg(io);
-	ret = recv_type(io);
-	if (ret == BSL_REP_ACK || ret == BSL_REP_VER || ret == BSL_REP_VERIFY_ERROR)
-	{
-		if (ret == BSL_REP_VER)
+	for (i = 0;; i++) {
+		send_msg(io);
+		recv_msg(io);
+		ret = recv_type(io);
+		if (ret == BSL_REP_ACK || ret == BSL_REP_VER || ret == BSL_REP_VERIFY_ERROR)
 		{
+			if (ret == BSL_REP_VER)
+			{
+				if (fdl1_loaded == 1)
+				{
+					DBG_LOG("CHECK_BAUD FDL1\n");
+					if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) fdl2_executed = -1;
+				}
+				else
+				{
+					DBG_LOG("CHECK_BAUD bootrom\n");
+					if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) { exec_addr = 0; fdl1_loaded = -1; fdl2_executed = -1; }
+				}
+				DBG_LOG("BSL_REP_VER: ");
+				print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
+
+				encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+				if (send_and_check(io)) exit(1);
+			}
+			else if (ret == BSL_REP_VERIFY_ERROR)
+			{
+				io->flags |= FLAGS_CRC16;
+				encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+				if (send_and_check(io)) exit(1);
+			}
+
 			if (fdl1_loaded == 1)
 			{
-				DBG_LOG("CHECK_BAUD FDL1\n");
-				if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) fdl2_executed = -1;
+				DBG_LOG("CMD_CONNECT FDL1\n");
+				if (keep_charge) {
+					encode_msg(io, BSL_CMD_KEEP_CHARGE, NULL, 0);
+					if (!send_and_check(io)) DBG_LOG("KEEP_CHARGE FDL1\n");
+				}
 			}
-			else
-			{
-				DBG_LOG("CHECK_BAUD bootrom\n");
-				if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) { exec_addr = 0; fdl1_loaded = -1; fdl2_executed = -1; }
-			}
-			DBG_LOG("BSL_REP_VER: ");
-			print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
-
-			encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-			if (send_and_check(io)) exit(1);
+			else DBG_LOG("CMD_CONNECT bootrom\n");
+			break;
 		}
-		else if (ret == BSL_REP_VERIFY_ERROR)
+		else if (ret == BSL_REP_UNSUPPORTED_COMMAND)
 		{
-			io->flags |= FLAGS_CRC16;
-			encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-			if (send_and_check(io)) exit(1);
-		}
-
-		if (fdl1_loaded == 1)
-		{
-			DBG_LOG("CMD_CONNECT FDL1\n");
-			if (keep_charge) {
-				encode_msg(io, BSL_CMD_KEEP_CHARGE, NULL, 0);
-				if (!send_and_check(io)) DBG_LOG("KEEP_CHARGE FDL1\n");
+			encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
+			if (!send_and_check(io)) {
+				io->flags &= ~FLAGS_TRANSCODE;
+				DBG_LOG("DISABLE_TRANSCODE\n");
 			}
+			fdl2_executed = 1;
+			break;
 		}
-		else DBG_LOG("CMD_CONNECT bootrom\n");
+		else if (i == 4) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+		usleep(500000);
 	}
-	else if (ret == BSL_REP_UNSUPPORTED_COMMAND)
-	{
-		encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-		if (!send_and_check(io)) {
-			io->flags &= ~FLAGS_TRANSCODE;
-			DBG_LOG("DISABLE_TRANSCODE\n");
-		}
-		fdl1_loaded = 1;
-		fdl2_executed = 1;
-	}
-	else ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 
 	while (1) {
 		if (argc > 1)
@@ -246,7 +251,7 @@ int main(int argc, char **argv) {
 			fi = fopen(fn, "r");
 			if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
 			else fclose(fi);
-			addr = strtoll(str2[3], NULL, 0);
+			addr = strtoul(str2[3], NULL, 0);
 			while (1) {
 				send_file(io, fn, addr, 0, 528);
 				addr -= 8;
@@ -261,7 +266,7 @@ int main(int argc, char **argv) {
 			fi = fopen(fn, "r");
 			if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
 			else fclose(fi);
-			addr = strtoll(str2[3], NULL, 0);
+			addr = strtoul(str2[3], NULL, 0);
 			send_file(io, fn, addr, 0, 528);
 			argc -= 3; argv += 3;
 		}
@@ -270,7 +275,7 @@ int main(int argc, char **argv) {
 			if (argcount <= 3) { DBG_LOG("fdl FILE addr\n"); argc -= 3; argv += 3; continue; }
 
 			fn = str2[2];
-			addr = strtoll(str2[3], NULL, 0);
+			addr = strtoul(str2[3], NULL, 0);
 
 			if (fdl2_executed > 0) {
 				DBG_LOG("FDL2 ALREADY EXECUTED, SKIP\n");
@@ -294,7 +299,6 @@ int main(int argc, char **argv) {
 				}
 				if (addr == 0x5500 || addr == 0x65000800) { highspeed = 1; baudrate = 921600; }
 
-				i = 0;
 				if (exec_addr) {
 					send_file(io, execfile, exec_addr, 0, 528);
 				} else {
@@ -307,14 +311,13 @@ int main(int argc, char **argv) {
 				io->flags &= ~FLAGS_CRC16;
 
 				encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-				while (1) {
+				for (i = 0;; i++) {
 					send_msg(io);
 					recv_msg(io);
 					if (recv_type(io) == BSL_REP_VER) break;
 					DBG_LOG("CHECK_BAUD FAIL\n");
-					if (i == 2) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+					if (i == 4) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 					usleep(500000);
-					i++;
 				}
 				DBG_LOG("CHECK_BAUD FDL1\n");
 
@@ -425,10 +428,10 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(str2[1], "baudrate")) {
 			if (argcount > 2)
 			{
-				baudrate = strtol(str2[2], NULL, 0);
+				baudrate = strtoul(str2[2], NULL, 0);
 				if (fdl2_executed) call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
 			}
-			DBG_LOG("baudrate is %d\n", baudrate);
+			DBG_LOG("baudrate is %u\n", baudrate);
 			argc -= 2; argv += 2;
 #endif
 		} else if (!strcmp(str2[1], "path")) {
@@ -439,7 +442,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(str2[1], "exec_addr")) {
 			FILE* fi;
 			if (0 == fdl1_loaded && argcount > 2) {
-				exec_addr = strtol(str2[2], NULL, 0);
+				exec_addr = strtoul(str2[2], NULL, 0);
 				memset(execfile, 0, sizeof(execfile));
 				sprintf(execfile, "custom_exec_no_verify_%x.bin", exec_addr);
 				fi = fopen(execfile, "r");
