@@ -692,7 +692,7 @@ void select_partition(spdio_t* io, const char* name,
 void print_progress_bar(float progress) {
 	static int completed0 = 0;
 	if (completed0 == PROGRESS_BAR_WIDTH) completed0 = 0;
-	int completed = PROGRESS_BAR_WIDTH * (int)progress;
+	int completed = (int)(PROGRESS_BAR_WIDTH * progress);
 	int remaining;
 	if (completed != completed0)
 	{

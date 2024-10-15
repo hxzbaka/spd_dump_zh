@@ -129,7 +129,8 @@ int main(int argc, char **argv) {
 	DBG_LOG("libusb_control_transfer ok\n");
 #endif
 	io->flags &= ~FLAGS_CRC16;
-	encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+	if (stage != -1) encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
+	else encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
 	for (i = 0;; i++) {
 		send_msg(io);
 		recv_msg(io);
@@ -182,7 +183,11 @@ int main(int argc, char **argv) {
 			fdl2_executed = 1;
 			break;
 		}
-		else if (i == 4) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+		else if (i == 4)
+		{
+			if (stage != -1) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+			else { encode_msg(io, BSL_CMD_CONNECT, NULL, 0); stage++; i = -1; }
+		}
 		usleep(500000);
 	}
 
@@ -636,7 +641,8 @@ int main(int argc, char **argv) {
 				}
 			}
 			char dfile[40];
-			sprintf(dfile, "%s.bin", str2[2]);
+			if (isdigit(str2[2][0])) sprintf(dfile, "%s.bin", name);
+			else sprintf(dfile, "%s.bin", str2[2]);
 			dump_partition(io, name, 0, realsize, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 2; argv += 2;
 
