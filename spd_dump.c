@@ -413,8 +413,10 @@ int main(int argc, char **argv) {
 				if (Da_Info.bSupportRawData == 2) {
 					encode_msg(io, BSL_CMD_WRITE_RAW_DATA_ENABLE, NULL, 0);
 					if (!send_and_check(io)) DBG_LOG("ENABLE_WRITE_RAW_DATA\n");
+					blk_size = 0xff00;
+					ptable = partition_list(io, "partition.xml", &part_count);
 				}
-				if (highspeed || Da_Info.dwStorageType == 0x103) {
+				else if (highspeed || Da_Info.dwStorageType == 0x103) {
 					blk_size = 0xff00;
 					ptable = partition_list(io, "partition.xml", &part_count);
 				}
