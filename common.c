@@ -918,6 +918,10 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 		fclose(fp);
 		return -1;
 	}
+	else {
+		if (sector_index == 1) Da_Info.dwStorageType = 0x102;
+		else Da_Info.dwStorageType == 0x103;
+	}
 	int real_SECTOR_SIZE = SECTOR_SIZE * sector_index;
 	efi_entry* entries = malloc(header.number_of_partition_entries * sizeof(efi_entry));
 	if (entries == NULL) {
@@ -973,7 +977,11 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 	
 	DBG_LOG("Reading Partition List\n");
 	if (selected_ab < 0) select_ab(io);
-	if (32 * 1024 == dump_partition(io, "user_partition", 0, 32 * 1024, "pgpt.bin", 4096))
+	int verbose = io->verbose;
+	io->verbose = 0;
+	size = dump_partition(io, "user_partition", 0, 32 * 1024, "pgpt.bin", 4096);
+	io->verbose = verbose;
+	if (32 * 1024 == size)
 		gpt_failed = gpt_info(ptable, fn, part_count_ptr);
 	if (gpt_failed) {
 		encode_msg(io, BSL_CMD_READ_PARTITION, NULL, 0);
@@ -1045,6 +1053,8 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 	if (*part_count_ptr) {
 		DBG_LOG("partition list saved to partition.xml\n");
 		DBG_LOG("Total number of partitions: %d\n", *part_count_ptr);
+		if (Da_Info.dwStorageType == 0x102) DBG_LOG("Storage is emmc\n");
+		else if (Da_Info.dwStorageType == 0x103) DBG_LOG("Storage is ufs\n");
 		return ptable;
 	}
 	else {
@@ -1071,6 +1081,9 @@ void load_partition(spdio_t* io, const char* name,
 	uint64_t offset, len, n64;
 	unsigned mode64, n; int ret;
 	FILE* fi;
+
+	if (strstr(name, "runtimenv")) { erase_partition(io, name); return; }
+	if (!strcmp(name, "calinv")) { return; } //skip calinv
 
 	fi = fopen(fn, "rb");
 	if (!fi) ERR_EXIT("fopen(load) failed\n");
@@ -1591,7 +1604,7 @@ void load_partitions(spdio_t* io, const char* path, int blk_size) {
 		}
 		io->verbose = verbose;
 
-		if (strstr(fn, "nv1")) load_nv_partition(io, fn, fix_fn, 4096);
+		if (strstr(fn, "fixnv1")) load_nv_partition(io, fn, fix_fn, 4096);
 		else load_partition(io, fn, fix_fn, blk_size);
 	}
 #if _WIN32
@@ -1623,13 +1636,6 @@ void get_Da_Info(spdio_t* io)
 		}
 		else memcpy(&Da_Info, io->raw_buf + 4, io->raw_len - 6);
 	}
-	FILE* fp;
-	fp = fopen("StorageType", "w");
-	if (Da_Info.dwStorageType == 0x101) fprintf(fp, "nand");
-	else if (Da_Info.dwStorageType == 0x102) fprintf(fp, "emmc");
-	else if (Da_Info.dwStorageType == 0x103) fprintf(fp, "ufs");
-	else fprintf(fp, "unknown");
-	fclose(fp);
 	DBG_LOG("FDL2: incompatible partition\n");
 }
 

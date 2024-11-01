@@ -415,8 +415,14 @@ int main(int argc, char **argv) {
 					}
 				}
 				if (Da_Info.bSupportRawData == 2) {
-					encode_msg(io, BSL_CMD_WRITE_RAW_DATA_ENABLE, NULL, 0);
-					if (!send_and_check(io)) DBG_LOG("ENABLE_WRITE_RAW_DATA\n");
+					if (fdl2_executed) {
+						Da_Info.bSupportRawData = 0;
+						DBG_LOG("DISABLE_WRITE_RAW_DATA in SPRD4\n");
+					}
+					else {
+						encode_msg(io, BSL_CMD_WRITE_RAW_DATA_ENABLE, NULL, 0);
+						if (!send_and_check(io)) DBG_LOG("ENABLE_WRITE_RAW_DATA\n");
+					}
 					blk_size = 0xff00;
 					ptable = partition_list(io, "partition.xml", &part_count);
 				}
@@ -427,6 +433,7 @@ int main(int argc, char **argv) {
 				else if (Da_Info.dwStorageType == 0x102) {
 					ptable = partition_list(io, "partition.xml", &part_count);
 				}
+				else if (Da_Info.dwStorageType == 0x101) DBG_LOG("Storage is nand\n");
 				if (gpt_failed != 1) {
 					if (selected_ab == 2) DBG_LOG("Device is using slot b\n");
 					else if (selected_ab == 1) DBG_LOG("Device is using slot a\n");
@@ -752,7 +759,7 @@ int main(int argc, char **argv) {
 				}
 			if (i == 0) load_partition(io, "splloader", str2[3], 4096);
 			else if (i > 0) {
-				if (strstr((*(ptable + i)).name, "nv1")) load_nv_partition(io, (*(ptable + i)).name, str2[3], 4096);
+				if (strstr((*(ptable + i)).name, "fixnv1")) load_nv_partition(io, (*(ptable + i)).name, str2[3], 4096);
 				else load_partition(io, (*(ptable + i)).name, str2[3], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			}
 			else {
@@ -772,7 +779,7 @@ int main(int argc, char **argv) {
 					}
 				}
 				io->verbose = verbose;
-				if (strstr(name, "nv1")) load_nv_partition(io, name, str2[3], 4096);
+				if (strstr(name, "fixnv1")) load_nv_partition(io, name, str2[3], 4096);
 				else load_partition(io, name, str2[3], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			}
 			argc -= 3; argv += 3;
