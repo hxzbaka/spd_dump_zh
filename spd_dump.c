@@ -84,15 +84,15 @@ int main(int argc, char **argv) {
 	}
 #endif
 #if !USE_LIBUSB
-	if (!curPort) FindPort();
+	if (!curPort) curPort = FindPort("SPRD U2S Diag");
 	if (at || bootmode >= 0)
 	{
 		if (curPort) ERR_EXIT("kick feature needs program running before connecting device to PC\n");
 		else ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
-		wait = 10 * REOPEN_FREQ;
+		wait = 30 * REOPEN_FREQ;
 	}
 #endif
-	DBG_LOG("Waiting for connection (%ds)\n", wait / REOPEN_FREQ);
+	DBG_LOG("Waiting for dl_diag connection (%ds)\n", wait / REOPEN_FREQ);
 	for (i = 0; ; i++) {
 #if USE_LIBUSB
 		io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
@@ -115,6 +115,7 @@ int main(int argc, char **argv) {
 	io->endp_out = endpoints[1];
 #else
 	call_ConnectChannel(io->handle, curPort);
+	call_Clear(io->handle);
 #endif
 	io->flags |= FLAGS_TRANSCODE;
 
@@ -157,9 +158,12 @@ int main(int argc, char **argv) {
 			}
 			else if (ret == BSL_REP_VERIFY_ERROR)
 			{
-				io->flags |= FLAGS_CRC16;
 				encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
-				if (send_and_check(io)) exit(1);
+				if (fdl1_loaded != 1)
+				{
+					if (send_and_check(io)) exit(1);
+				}
+				else { i--; continue; }
 			}
 
 			if (fdl1_loaded == 1)
@@ -188,7 +192,6 @@ int main(int argc, char **argv) {
 			if (stage != -1) ERR_EXIT("wrong command or wrong mode detected, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
 			else { encode_msg(io, BSL_CMD_CONNECT, NULL, 0); stage++; i = -1; }
 		}
-		usleep(500000);
 	}
 
 	while (1) {
@@ -522,9 +525,9 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(str2[1], "p") || !strcmp(str2[1], "print")) {
 			if (part_count) {
-				DBG_LOG("  0 %36s 256KB\n", "splloader");
+				DBG_LOG("  0 %36s     256KB\n", "splloader");
 				for (i = 0; i < part_count; i++) {
-					DBG_LOG("%3d %36s %lldMB\n", i + 1, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
+					DBG_LOG("%3d %36s %7lldMB\n", i + 1, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
 				}
 			}
 			argc -= 1; argv += 1;

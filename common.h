@@ -43,7 +43,7 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam);
 #include "Wrapper.h"
 #define fseeko _fseeki64
 #define ftello _ftelli64
-BOOL FindPort(void);
+DWORD FindPort(const char* USB_DL);
 void usleep(unsigned int us);
 #endif
 
