@@ -919,7 +919,7 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 	}
 	else {
 		if (sector_index == 1) Da_Info.dwStorageType = 0x102;
-		else Da_Info.dwStorageType == 0x103;
+		else Da_Info.dwStorageType = 0x103;
 	}
 	int real_SECTOR_SIZE = SECTOR_SIZE * sector_index;
 	efi_entry* entries = malloc(header.number_of_partition_entries * sizeof(efi_entry));
@@ -931,8 +931,12 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 	bytes_read = fread(entries, 1, header.number_of_partition_entries * sizeof(efi_entry), fp);
 	if (bytes_read != (int)(header.number_of_partition_entries * sizeof(efi_entry)))
 		DBG_LOG("only read %d/%d\n", bytes_read, (int)(header.number_of_partition_entries * sizeof(efi_entry)));
-	FILE* fo = fopen(fn_xml, "wb");
-	fprintf(fo, "<Partitions>\n");
+	FILE* fo = NULL;
+	if (strcmp(fn_xml, "-")) {
+		fo = fopen(fn_xml, "wb");
+		if (!fo) ERR_EXIT("fopen failed\n");
+		fprintf(fo, "<Partitions>\n");
+	}
 	int n = 0;
 	for (int i = 0; i < header.number_of_partition_entries; i++) {
 		efi_entry entry = *(entries + i);
@@ -948,16 +952,20 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 		uint64_t lba_count = entry.ending_lba - entry.starting_lba + 1;
 		(*(ptable + i)).size = lba_count * real_SECTOR_SIZE;
 		DBG_LOG("%3d %36s %7lldMB\n", i + 1, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
-		fprintf(fo, "    <Partition id=\"%s\" size=\"", (*(ptable + i)).name);
-		if (i + 1 == n) fprintf(fo, "0x%x\"/>\n", ~0);
-		else fprintf(fo, "%lld\"/>\n", ((*(ptable + i)).size >> 20));
+		if (fo) {
+			fprintf(fo, "    <Partition id=\"%s\" size=\"", (*(ptable + i)).name);
+			if (i + 1 == n) fprintf(fo, "0x%x\"/>\n", ~0);
+			else fprintf(fo, "%lld\"/>\n", ((*(ptable + i)).size >> 20));
+		}
 		if (!selected_ab) {
 			size_t namelen = strlen((*(ptable + i)).name);
 			if (namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_a")) selected_ab = 1;
 		}
 	}
-	fprintf(fo, "</Partitions>");
-	fclose(fo);
+	if (fo) {
+		fprintf(fo, "</Partitions>");
+		fclose(fo);
+	}
 	free(entries);
 	fclose(fp);
 	*part_count_ptr = n;
@@ -1050,7 +1058,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		gpt_failed = 0;
 	}
 	if (*part_count_ptr) {
-		DBG_LOG("partition list saved to partition.xml\n");
+		if (strcmp(fn, "-")) DBG_LOG("partition list saved to %s\n", fn);
 		DBG_LOG("Total number of partitions: %d\n", *part_count_ptr);
 		if (Da_Info.dwStorageType == 0x102) DBG_LOG("Storage is emmc\n");
 		else if (Da_Info.dwStorageType == 0x103) DBG_LOG("Storage is ufs\n");

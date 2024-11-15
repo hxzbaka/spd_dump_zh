@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ctype.h> // tolower
 #include <math.h>
+#include <time.h>
 
 #ifndef LIBUSB_DETACH
 /* detach the device from crappy kernel drivers */
@@ -52,8 +53,13 @@ void usleep(unsigned int us);
 #define FLAGS_CRC16 1
 #define FLAGS_TRANSCODE 2
 
+#if _WIN32
+#define ERR_EXIT(...) \
+	do { fprintf(stderr, __VA_ARGS__); system("pause"); exit(1); } while (0)
+#else
 #define ERR_EXIT(...) \
 	do { fprintf(stderr, __VA_ARGS__); exit(1); } while (0)
+#endif
 
 #define DBG_LOG(...) fprintf(stderr, __VA_ARGS__)
 
