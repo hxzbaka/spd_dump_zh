@@ -1,4 +1,5 @@
 ## Spreadtrum firmware dumper
+### [中文文档](https://github.com/TomKing062/spreadtrum_flash/blob/main/README_zh.md)
 
 work with Official SPRD U2S Diag Driver or LibUSB Driver.
 
@@ -135,3 +136,51 @@ Usable mainly in FDL2 stage; only new FDL1 supports exit
 - `reset`
 
 - `poweroff`
+### Android(Termux)
+
+1.Install termux-api and authorize self startup
+### [Termux-api](https://github.com/termux/termux-api/releases)
+
+2.Install dependency libraries and compile components
+
+```
+pkg install termux-api libusb clang git
+```
+
+3.Pull source code
+
+```
+git clone https://github.com/TomKing062/spreadtrum_flash.git
+cd spreadtrum_flash
+```
+
+4.Build
+
+```
+make
+```
+Produce executable files:spd_dump
+
+
+5.Search OTG Device
+
+```
+termux-usb -l
+[
+"/dev/bus/usb/xxx/xxx"
+]
+```
+
+6.Authorize OTG devices
+
+```
+termux-usb -r /dev/bus/usb/xxx/xxx
+```
+Allow access to the target device
+
+
+7.Run SPD_SUMP
+
+```
+termux-usb -e './spd_dump --usb-fd' /dev/bus/usb/xxx/xxx
+```
