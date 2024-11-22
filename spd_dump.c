@@ -21,17 +21,11 @@ void print_help(void)
 		"\tInteractive mode\n"
 		"\t\tspd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec\n"
 		"\tThen the prompt should display FDL2>.\n"
-		"\n\tReconnect (unstable, after `disconnect`, the device may become unresponsive)\n"
-		"\t\tspd_dump --wait 300 fdl / path / to / fdl1 fdl1_addr fdl / path / to / fdl2 fdl2_addr exec disconnect\n"
-		"\t\tspd_dump --reconnect path savepath r all_lite disconnect\n"
-		"\t\tspd_dump --reconnect reset\n"
-		"\tUse `stage 0` or `-r` or `--reconnect` before commands.\n"
-		"\tUse disconnect if you need to quit `spd_dump` but want the device to remain in U2S mode.\n"
 		"\nOptions\n"
 		"\t--wait <seconds>\n"
 		"\t\tSpecifies the time to wait for the device to connect.\n"
-		"\t--stage <number>|-r|--reconnect\n"
-		"\t\tTry to reconnect device in brom/fdl1/fdl2 stage. Any number behaves the same way.\n"
+		"\t--stage <number>\n"
+		"\t\tTry to reconnect device in brom/fdl1/fdl2 stage. Any number >= 0 behaves the same way.\n"
 		"\t--verbose <level>\n"
 		"\t\tSets the verbosity level of the output (supports 0, 1, or 2).\n"
 		"\t--kick\n"
@@ -95,8 +89,6 @@ void print_help(void)
 		"\t(Applicable mainly to the FDL2 stage; only new FDL1 supports exit)\n"
 		"\treset\n"
 		"\tpoweroff\n"
-		"\n\tTo quit `spd_dump` but keep the device in U2S mode.\n"
-		"\tdisconnect\n"
 	);
 }
 
@@ -156,13 +148,9 @@ int main(int argc, char **argv) {
 			argc -= 2; argv += 2;
 		} else if (!strcmp(argv[1], "--stage")) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
-			stage = 99;
+			stage = atoi(argv[2]);
 			argc -= 2; argv += 2;
-		} else if (strstr(argv[1], "-r")) {
-			if (argc <= 1) ERR_EXIT("bad option\n");
-			stage = 99;
-			argc -= 1; argv += 1;
-		} else if (strstr(argv[1], "help") || strstr(argv[1], "-h") || strstr(argv[1], "-?")) {
+		} else if (strstr(argv[1], "h") || strstr(argv[1], "?")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
 			print_help();
 			return 0;
@@ -307,37 +295,10 @@ int main(int argc, char **argv) {
 		}
 		else if (ret == BSL_REP_UNSUPPORTED_COMMAND)
 		{
-			FILE* fi = fopen("RuntimeData.bin", "rb");
-			if (!fi) {
-				DBG_LOG("RuntimeData.bin not exist.\n");
-				encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-				if (!send_and_check(io)) {
-					io->flags &= ~FLAGS_TRANSCODE;
-					DBG_LOG("DISABLE_TRANSCODE\n");
-				}
-			}
-			else {
-				if (fread(&Da_Info, 1, sizeof(Da_Info), fi) != sizeof(Da_Info)) ERR_EXIT("Error reading Da_Info.\n");
-				if (fread(&blk_size, 1, 2, fi) != 2) ERR_EXIT("Error reading blk_size.\n");
-				if (fread(&io->timeout, 1, 2, fi) != 2) ERR_EXIT("Error reading timeout.\n");
-				if (fread(&io->verbose, 1, 2, fi) != 2) ERR_EXIT("Error reading verbose.\n");
-				if (fread(&part_count, 1, 2, fi) != 2) ERR_EXIT("Error reading part_count.\n");
-				if (part_count) {
-					size_t expected_size = part_count * sizeof(partition_t);
-					ptable = (partition_t*)malloc(expected_size);
-					if (!ptable) ERR_EXIT("Memory allocation failed for ptable.\n");
-					if (fread(ptable, 1, expected_size, fi) != expected_size) ERR_EXIT("Error reading partition table.\n");
-				}
-				fclose(fi);
-				remove("RuntimeData.bin");
-				DBG_LOG("Recover RuntimeData successfully.\n");
-				if (Da_Info.bDisableHDLC) {
-					encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
-					if (!send_and_check(io)) {
-						io->flags &= ~FLAGS_TRANSCODE;
-						DBG_LOG("DISABLE_TRANSCODE\n");
-					}
-				}
+			encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
+			if (!send_and_check(io)) {
+				io->flags &= ~FLAGS_TRANSCODE;
+				DBG_LOG("DISABLE_TRANSCODE\n");
 			}
 			fdl2_executed = 1;
 			break;
@@ -1043,27 +1004,6 @@ int main(int argc, char **argv) {
 			}
 			encode_msg(io, BSL_CMD_POWER_OFF, NULL, 0);
 			if (!send_and_check(io)) break;
-
-		} else if (!strcmp(str2[1], "disconnect")) {
-			FILE* fo;
-			if (fdl2_executed == 1) {
-				fo = fopen("RuntimeData.bin", "wb");
-				if (fo) {
-					if (fwrite(&Da_Info, 1, sizeof(Da_Info), fo) != sizeof(Da_Info)) ERR_EXIT("Error writing Da_Info.\n");
-					if (fwrite(&blk_size, 1, 2, fo) != 2) ERR_EXIT("Error writing blk_size.\n");
-					if (fwrite(&io->timeout, 1, 2, fo) != 2) ERR_EXIT("Error writing timeout.\n");
-					if (fwrite(&io->verbose, 1, 2, fo) != 2) ERR_EXIT("Error writing verbose.\n");
-					if (fwrite(&part_count, 1, 2, fo) != 2) ERR_EXIT("Error writing part_count.\n");
-					if (part_count) {
-						size_t expected_size = part_count * sizeof(partition_t);
-						if (fwrite(ptable, 1, expected_size, fo) != expected_size) ERR_EXIT("Error writing partition table.\n");
-					}
-					fclose(fo);
-					DBG_LOG("Save RuntimeData successfully.\n");
-				}
-				else DBG_LOG("Saving RuntimeData failed.\n");
-			}
-			break;
 
 		} else if (!strcmp(str2[1], "verbose")) {
 			if (argcount <= 2) { DBG_LOG("verbose {0,1,2}\n"); argc -= 2; argv += 2; continue; }

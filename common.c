@@ -466,7 +466,7 @@ int recv_msg(spdio_t* io) {
 		if (!ret) {
 			if (fdl2_executed) {
 #if !USE_LIBUSB
-				if (io->raw_len) call_Clear(io->handle); //io->raw_len = nread in recv_msg_orig()
+				call_Clear(io->handle);
 #endif
 				send_msg(io);
 				ret = recv_msg_orig(io);
