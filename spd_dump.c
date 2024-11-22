@@ -24,8 +24,9 @@ void print_help(void)
 		"\nOptions\n"
 		"\t--wait <seconds>\n"
 		"\t\tSpecifies the time to wait for the device to connect.\n"
-		"\t--stage <number>\n"
-		"\t\tTry to reconnect device in brom/fdl1/fdl2 stage. Any number >= 0 behaves the same way.\n"
+		"\t--stage <number>|-r|--reconnect\n"
+		"\t\tTry to reconnect device in brom/fdl1/fdl2 stage. Any number behaves the same way.\n"
+		"\t\t(unstable, a device in brom/fdl1 stage can be reconnected infinite times, but only once in fdl2 stage)\n"
 		"\t--verbose <level>\n"
 		"\t\tSets the verbosity level of the output (supports 0, 1, or 2).\n"
 		"\t--kick\n"
@@ -86,7 +87,7 @@ void print_help(void)
 		"\tverity {0,1}\n"
 		"\t\tEnables or disables dm-verity on android 10(+).\n"
 		"\nExit Commands\n"
-		"\t(Applicable mainly to the FDL2 stage; only new FDL1 supports exit)\n"
+		"\t(Usable mainly in FDL2 stage; only new FDL1 supports exit)\n"
 		"\treset\n"
 		"\tpoweroff\n"
 	);
@@ -148,9 +149,13 @@ int main(int argc, char **argv) {
 			argc -= 2; argv += 2;
 		} else if (!strcmp(argv[1], "--stage")) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
-			stage = atoi(argv[2]);
+			stage = 99;
 			argc -= 2; argv += 2;
-		} else if (strstr(argv[1], "h") || strstr(argv[1], "?")) {
+		} else if (strstr(argv[1], "-r")) {
+			if (argc <= 1) ERR_EXIT("bad option\n");
+			stage = 99;
+			argc -= 1; argv += 1;
+		} else if (strstr(argv[1], "help") || strstr(argv[1], "-h") || strstr(argv[1], "-?")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
 			print_help();
 			return 0;
@@ -279,7 +284,7 @@ int main(int argc, char **argv) {
 				{
 					if (send_and_check(io)) exit(1);
 				}
-				else { i--; continue; }
+				else { i = -1; continue; }
 			}
 
 			if (fdl1_loaded == 1)
