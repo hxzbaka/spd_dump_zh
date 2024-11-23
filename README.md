@@ -84,18 +84,16 @@ Then the prompt should display `FDL2>`.
   Specifies the 4th NAND ID, affecting `read_part(s)` size calculation, default value is 0x15.
 
 - `rawdata {0,2}` (fdl2 stage only)
-  Enables the rawdata protocol to speed up the `w` and `write_part(s)` commands.
-
-  (Note: rawdata = 1 is currently not supported.)
+  Rawdata protocol helps speed up `w` and `write_part(s)` commands, when rawdata=2, `blk_size` will not effect write speed. (rawdata relays on u-boot/lk, so don't set it manually unless its default value is 2. Note: rawdata = 1 is currently not supported.)
 
 - `blk_size byte` (fdl2 stage only)
-  Sets the block size, with a maximum of 65535 bytes. This option helps speed up the `w` and `write_part(s)` commands when the rawdata protocol is disabled.
+  Sets the block size, with a maximum of 65535 bytes. This option helps speed up `r`, `w`,`read_part(s)` and `write_part(s)` commands.
 
 - `r all|part_name|part_id`
   When the partition table is available::
 
-    - `r all`: Full backup (excludes blackbox, cache, userdata)
-    - `r all_lite`: Backup excluding inactive slot partitions, blackbox, cache, and userdata
+    - `r all`: full backup (excludes blackbox, cache, userdata)
+    - `r all_lite`: full backup (excludes inactive slot partitions, blackbox, cache, and userdata)
 
   When the partition table is unavailable:
     - `r` will auto-calculate part size (supports all partitions on emmc/ufs and only `ubipac` on NAND).

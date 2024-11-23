@@ -33,29 +33,29 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
 - `--wait <秒数>`  
   指定等待设备连接的时间。
 
-- `--stage <数字>`  
-  尝试在brom/fdl1/fdl2阶段重新连接设备。任何≥0的数字都有同样的行为。
+- `--stage <数字>|-r|--reconnect`  
+  尝试在brom/fdl1/fdl2阶段重新连接设备。输入任意数字的程序行为均相同。
 
 - `--verbose <等级>`  
-  设置输出的详细程度（支持0、1或2）。
+  设置屏幕日志的详细程度（支持0、1或2，不影响文件日志）。
 
 - `--kick`  
-  使用阶段 `boot_diag->cali_diag->dl_diag` 连接设备。
+  使用 `boot_diag->cali_diag->dl_diag` 途径连接设备。
   
-  指在设备关机上电后开启的boot_diag，此功能依赖RECOVERY完整！
+  boot_diag是在设备关机直接上电出现的u2s端口，其中cali_diag依赖原厂或少数经过定制的第三方recovery
 
 - `--kickto <模式>`  
-  使用自定义阶段`boot_diag->custom_diag` 连接设备。支持的模式为0-127。
+  使用自定义途径`boot_diag->custom_diag` 连接设备。支持的模式为0-127。
   
   (模式 1 = cali_diag, 模式 2 = dl_diag; 并非所有设备都支持模式 2)
   
 - `-h|--help|help`
-  显示帮助和使用信息。
+  显示使用帮助。
 
 #### 运行时命令
 
 - `verbose level`  
-  设置输出的详细程度（支持0、1或2）
+  设置屏幕日志的详细程度（支持0、1或2，不影响文件日志）。
 
 - `timeout <毫秒>`  
   设置命令超时时间（毫秒）
@@ -66,7 +66,7 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
   在u-boot/littlekernel源代码中，只列出了115200、230400、460800和921600。
   
 - `exec_addr [addr]`（仅限brom阶段）
-将 `customexec_no_verify_addr.bin` 发送到指定的内存地址，以绕过brom对 `splloader/fdl1` 的签名验证。
+  将 `customexec_no_verify_addr.bin` 发送到指定的内存地址，以绕过brom对 `splloader/fdl1` 的签名验证。
 
   用于CVE-2022-38694。
   
@@ -80,24 +80,22 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
   更改`r`,`read_part`,`read_flash`和`read_mem`等命令的保存目录。
 
 - `nand_id [id]`  
-  指定影响`read_part`大小计算的第四个NAND ID，默认值为0x15。
+  指定影响`read_part(s)`分区大小计算的第四个NAND ID，默认值为0x15。
 
 - `rawdata {0,2}`（仅限fdl2阶段）
-启用rawdata协议以加速`w`和`write_part`命令。
+  rawdata协议用于加速`w`和`write_part`命令，当rawdata为2时，写入速度与blk_size无关（依赖于u-boot/lk，因此默认2的可以改0/2，默认0的不能改2，注意：暂时不支持默认rawdata=1的设备）
 
-（注意：目前不支持rawdata=1）
-  
 - `blk_size byte`（仅限fdl2阶段）
-  设置块大小，最大为65535字节。当禁用rawdata协议时，此选项有助于加快`w`和`write_part（s）`命令的速度。
+  设置块大小，最大为65535字节。此选项用于加快`r`、`w`、`read_part(s)`和`write_part(s)`命令的速度。
 
 - `r all|part_name|part_id`  
   当分区表可用时::
   
-    - `r all`: 完全备份 (不包含 blackbox, cache, userdata)
-    - `r all_lite`: 备份不包括非活动插槽分区,blackbox,cache和userdata
+    - `r all`: 全盘备份 (不包含 blackbox, cache, userdata)
+    - `r all_lite`: 全盘备份（不包括非活动槽位, blackbox, cache和userdata）
   
   当分区表不可用时:
-    - `r` 将自动计算部件大小（支持emmc/ufs上的所有分区，仅支持NAND上的`ubipac`）
+    - `r` 将自动计算部件大小（支持emmc/ufs上的所有分区，NAND上仅支持`ubipac`分区）
 
 - `read_part part_name|part_id offset size FILE`  
   以给定的偏移量和大小将特定分区读取到文件中。
@@ -111,7 +109,7 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
   将指定的文件写入分区。
 
 - `write_parts save_location`  
-  写入由`read_parts`转储的所有分区。
+  写入由`read_parts`保存的所有分区。
 
 - `e|erase_part part_name|part_id`  
   擦除指定分区。
@@ -131,7 +129,7 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
 
 #### 退出指令
 
-主要适用于FDL2阶段；只有新的FDL1支持退出
+一般于FDL2阶段可用可用；只有很新的FDL1才支持
 
 - `reset`
 

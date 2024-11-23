@@ -61,7 +61,7 @@ void usleep(unsigned int us);
 
 #if _WIN32
 #define ERR_EXIT(...) \
-	do { fprintf(stderr, __VA_ARGS__); system("pause"); exit(1); } while (0)
+	do { fprintf(stderr, __VA_ARGS__); if (m_bOpened == 1) system("pause"); exit(1); } while (0)
 #else
 #define ERR_EXIT(...) \
 	do { fprintf(stderr, __VA_ARGS__); exit(1); } while (0)

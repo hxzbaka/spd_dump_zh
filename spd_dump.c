@@ -45,8 +45,8 @@ void print_help(void)
 		"\t\tSupported baudrates are 57600, 115200, 230400, 460800, 921600, 1000000, 2000000, 3250000, and 4000000.\n"
 		"\t\tWhile in u-boot/littlekernel source code, only 115200, 230400, 460800, and 921600 are listed.\n"
 		"\texec_addr [addr]\n\t\t(brom stage only)\n"
-		"\t\tSends custom_exec_no_verify_addr.bin to the specified memory address to bypass the signature verification by "
-		"brom for splloader/fdl1.\n\t\tUsed for CVE-2022-38694.\n"
+		"\t\tSends custom_exec_no_verify_addr.bin to the specified memory address to bypass the signature verification by brom for splloader/fdl1.\n"
+		"\t\tUsed for CVE-2022-38694.\n"
 		"\tfdl FILE addr\n"
 		"\t\tSends a file (splloader, fdl1, fdl2, sml, trustos, teecfg) to the specified memory address.\n"
 		"\texec\n"
@@ -56,15 +56,14 @@ void print_help(void)
 		"\tnand_id [id]\n"
 		"\t\tSpecifies the 4th NAND ID, affecting read_part(s) size calculation, default value is 0x15.\n"
 		"\trawdata {0,2}\n\t\t(fdl2 stage only)\n"
-		"\t\tEnables the rawdata protocol to speed up the w and write_part(s) commands.\n"
-		"\t\t(Note: rawdata = 1 is currently not supported.)\n"
+		"\t\tRawdata protocol helps speed up `w` and `write_part(s)` commands, when rawdata=2, `blk_size` will not effect write speed.\n"
+		"\t\t(rawdata relays on u-boot/lk, so don't set it manually unless its default value is 2. Note: rawdata = 1 is currently not supported.)\n"
 		"\tblk_size byte\n\t\t(fdl2 stage only)\n"
-		"\t\tSets the block size, with a maximum of 65535 bytes. This option helps speed up the w and write_part(s) "
-		"commands when the rawdata protocol is disabled.\n"
+		"\t\tSets the block size, with a maximum of 65535 bytes. This option helps speed up `r`, `w`,`read_part(s)` and `write_part(s)` commands.\n"
 		"\tr all|part_name|part_id\n"
 		"\t\tWhen the partition table is available:\n"
-		"\t\t\tr all: Full backup (excludes blackbox, cache, userdata)\n"
-		"\t\t\tr all_lite: Backup excluding inactive slot partitions, blackbox, cache, and userdata\n"
+		"\t\t\tr all: full backup (excludes blackbox, cache, userdata)\n"
+		"\t\t\tr all_lite: full backup (excludes inactive slot partitions, blackbox, cache, and userdata)\n"
 		"\t\tWhen the partition table is unavailable:\n"
 		"\t\t\tr will auto-calculate part size (supports all partitions on emmc/ufs and only ubipac on NAND).\n"
 		"\tread_part part_name|part_id offset size FILE\n"
@@ -231,6 +230,7 @@ int main(int argc, char **argv) {
 #endif // __ANDROID__
 
 #if USE_LIBUSB
+	m_bOpened = 1;
 	int endpoints[2];
 	find_endpoints(io->dev_handle, endpoints);
 	io->endp_in = endpoints[0];

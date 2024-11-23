@@ -604,7 +604,7 @@ unsigned dump_flash(spdio_t* io,
 		offset += nread;
 		if (n != nread) break;
 	}
-	DBG_LOG("dump_flash: 0x%08x+0x%x, target: 0x%x, read: 0x%x\n", addr, start, len, offset - start);
+	DBG_LOG("Read Flash Done: 0x%08x+0x%x, target: 0x%x, read: 0x%x\n", addr, start, len, offset - start);
 	fclose(fo);
 	return offset;
 }
@@ -647,7 +647,7 @@ unsigned dump_mem(spdio_t* io,
 		offset += nread;
 		if (n != nread) break;
 	}
-	DBG_LOG("dump_mem: 0x%08x, target: 0x%x, read: 0x%x\n", start, len, offset - start);
+	DBG_LOG("Read Mem Done: 0x%08x, target: 0x%x, read: 0x%x\n", start, len, offset - start);
 	fclose(fo);
 	return offset;
 }
@@ -779,7 +779,7 @@ uint64_t dump_partition(spdio_t* io,
 		offset += nread;
 		if (n != nread) break;
 	}
-	DBG_LOG("dump_partition: %s+0x%llx, target: 0x%llx, read: 0x%llx\n",
+	DBG_LOG("Read Part Done: %s+0x%llx, target: 0x%llx, read: 0x%llx\n",
 		name, (long long)start, (long long)len,
 		(long long)(offset - start));
 	fclose(fo);
@@ -1176,7 +1176,7 @@ void load_partition(spdio_t* io, const char* name,
 #endif
 	fclose(fi);
 	encode_msg(io, BSL_CMD_END_DATA, NULL, 0);
-	if(!send_and_check(io)) DBG_LOG("load_partition: %s, target: 0x%llx, written: 0x%llx\n",
+	if(!send_and_check(io)) DBG_LOG("Write Part Done: %s, target: 0x%llx, written: 0x%llx\n",
 		name, (long long)len, (long long)offset);
 }
 
@@ -1293,7 +1293,7 @@ void load_nv_partition(spdio_t* io, const char* name,
 	}
 	free(mem);
 	encode_msg(io, BSL_CMD_END_DATA, NULL, 0);
-	if(!send_and_check(io)) DBG_LOG("load_nv_partition: %s, target: 0x%llx, written: 0x%llx\n",
+	if(!send_and_check(io)) DBG_LOG("Write NV_Part Done: %s, target: 0x%llx, written: 0x%llx\n",
 		name, (long long)len, (long long)offset);
 }
 
