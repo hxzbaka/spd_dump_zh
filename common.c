@@ -1891,37 +1891,36 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) CloseHandle(hSerial);
 		else
 		{
-			uint8_t cali_ok[] = { 8,0,0xd5,0 };
+			uint8_t cali_ok[] = { 0x7e,0,0,0,0 };
 			if (io->verbose >= 2) {
 				DBG_LOG("read (%d):\n", bytes_read);
 				print_mem(stderr, io->recv_buf, bytes_read);
 			}
-			if (!memcmp(io->recv_buf + bytes_read - 5, cali_ok, 4))
+			if (memcmp(io->recv_buf, cali_ok, 5))
 			{
-				uint8_t autod[] = { 0x7e,0,0,0,0,0x20,0,0x68,0,0x41,0x54,0x2b,0x53,0x50,0x52,0x45,0x46,0x3d,0x22,0x41,0x55,0x54,0x4f,0x44,0x4c,0x4f,0x41,0x44,0x45,0x52,0x22,0xd,0xa,0x7e };
-				if (io->verbose >= 2) {
-					DBG_LOG("send (%d):\n", 34);
-					print_mem(stderr, autod, 34);
-				}
-				if (!WriteFile(hSerial, autod, 34, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
-				if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) ERR_EXIT("read response from cali mode failed\n");
-				else
-				{
-					uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
-					if (io->verbose >= 2) {
-						DBG_LOG("read (%d):\n", bytes_read);
-						print_mem(stderr, io->recv_buf, bytes_read);
-					}
-					if (!memcmp(io->recv_buf + bytes_read - 7, ok, 6)) done = 1;
-					else {
-						DBG_LOG("Unknown response\n");
-						if (io->verbose < 2) print_mem(stderr, io->recv_buf, bytes_read);
-					}
-				}
-			}
-			else {
 				DBG_LOG("Unknown response\n");
 				if (io->verbose < 2) print_mem(stderr, io->recv_buf, bytes_read);
+			}
+			if (!memcmp(io->recv_buf, payload, 10)) DBG_LOG("Warning: response is same as send\n");
+			uint8_t autod[] = { 0x7e,0,0,0,0,0x20,0,0x68,0,0x41,0x54,0x2b,0x53,0x50,0x52,0x45,0x46,0x3d,0x22,0x41,0x55,0x54,0x4f,0x44,0x4c,0x4f,0x41,0x44,0x45,0x52,0x22,0xd,0xa,0x7e };
+			if (io->verbose >= 2) {
+				DBG_LOG("send (%d):\n", 34);
+				print_mem(stderr, autod, 34);
+			}
+			if (!WriteFile(hSerial, autod, 34, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
+			if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) ERR_EXIT("read response from cali mode failed\n");
+			else
+			{
+				uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
+				if (io->verbose >= 2) {
+					DBG_LOG("read (%d):\n", bytes_read);
+					print_mem(stderr, io->recv_buf, bytes_read);
+				}
+				if (!memcmp(io->recv_buf + bytes_read - 7, ok, 6)) done = 1;
+				else {
+					DBG_LOG("Unknown response\n");
+					if (io->verbose < 2) print_mem(stderr, io->recv_buf, bytes_read);
+				}
 			}
 		}
 		for (int i = 0; ; i++)
