@@ -100,6 +100,7 @@ int m_bOpened = 0;
 int fdl1_loaded = 0;
 int fdl2_executed = 0;
 int selected_ab = -1;
+DWORD* ports = NULL;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i, in_quote;
 	int wait = 30 * REOPEN_FREQ;
@@ -177,23 +178,31 @@ int main(int argc, char **argv) {
 		} else break;
 	}
 
-#if _WIN32
-	io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
-	if (io->hThread == NULL) {
-		return -1;
-	}
-#endif
 #if !USE_LIBUSB
-	if (!curPort) curPort = FindPort("SPRD U2S Diag");
+	curPort = FindPort("SPRD U2S Diag");
 	if (at || bootmode >= 0)
 	{
 		if (curPort) ERR_EXIT("kick feature needs program running before connecting device to PC\n");
-		else ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
+		else
+		{
+			io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
+			if (io->hThread == NULL) return -1;
+			ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
+		}
 		wait = 30 * REOPEN_FREQ;
 	}
+	else if (curPort) {
+		for (DWORD* port = ports; *port != 0; port++) { if (call_ConnectChannel(io->handle, *port)) break; }
+		if (!m_bOpened) curPort = 0;
+	}
+	free(ports);
+#endif
+#if _WIN32
+	if (io->hThread == NULL) io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
+	if (io->hThread == NULL) return -1;
 #endif
 #ifndef __ANDROID__
-	DBG_LOG("Waiting for dl_diag connection (%ds)\n", wait / REOPEN_FREQ);
+	if (!m_bOpened) DBG_LOG("Waiting for dl_diag connection (%ds)\n", wait / REOPEN_FREQ);
 	for (i = 0; ; i++) {
 #if USE_LIBUSB
 		io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
@@ -236,12 +245,9 @@ int main(int argc, char **argv) {
 	io->endp_in = endpoints[0];
 	io->endp_out = endpoints[1];
 #else
-	call_ConnectChannel(io->handle, curPort);
+	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("Connection failed\n");
 #endif
 	io->flags |= FLAGS_TRANSCODE;
-
-	// Required for smartphones.
-	// Is there a way to do the same with usb-serial?
 #if USE_LIBUSB
 	ret = libusb_control_transfer(io->dev_handle,
 			0x21, 34, 0x601, 0, NULL, 0, io->timeout);

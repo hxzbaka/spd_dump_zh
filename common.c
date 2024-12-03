@@ -1,13 +1,16 @@
 #include "common.h"
 #if !USE_LIBUSB
 DWORD curPort = 0;
+extern DWORD* ports;
 DWORD FindPort(const char* USB_DL)
 {
 	const GUID GUID_DEVCLASS_PORTS = { 0x4d36e978, 0xe325, 0x11ce,{0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18} };
 	HDEVINFO DeviceInfoSet;
 	SP_DEVINFO_DATA DeviceInfoData;
 	DWORD dwIndex = 0;
+	DWORD count = 0;
 
+	if (ports) { free(ports); ports = NULL; }
 	DeviceInfoSet = SetupDiGetClassDevs(&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);
 
 	if (DeviceInfoSet == INVALID_HANDLE_VALUE) {
@@ -28,15 +31,27 @@ DWORD FindPort(const char* USB_DL)
 			char portNum_str[4];
 			strncpy(portNum_str, result + strlen(USB_DL) + 5, 3);
 			portNum_str[3] = 0;
-			SetupDiDestroyDeviceInfoList(DeviceInfoSet);
-			return strtoul(portNum_str, NULL, 0);
-		}
 
+			DWORD portNum = strtoul(portNum_str, NULL, 0);
+			DWORD* temp = (DWORD*)realloc(ports, (count + 2) * sizeof(DWORD));
+			if (temp == NULL) {
+				DBG_LOG("Memory allocation failed.\n");
+				SetupDiDestroyDeviceInfoList(DeviceInfoSet);
+				free(ports);
+				return 0;
+			}
+			ports = temp;
+			ports[count] = portNum;
+			count++;
+		}
 		++dwIndex;
 	}
 
 	SetupDiDestroyDeviceInfoList(DeviceInfoSet);
-
+	if (count > 0) {
+		ports[count] = 0;
+		return ports[0];
+	}
 	return 0;
 }
 
@@ -1683,12 +1698,22 @@ void select_ab(spdio_t* io)
 void dm_disable(spdio_t* io, int blk_size)
 {
 	const char* list[] = { "vbmeta", "vbmeta_a", "vbmeta_b", NULL };
+	char dfile[40];
 	for (int i = 0; list[i] != NULL; i++) {
-		char dfile[40];
 		sprintf(dfile, "%s.bin", list[i]);
-		if (1048576 != dump_partition(io, list[i], 0, 1048576, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE)) continue;
-
-		FILE* vb;
+		if (1048576 != dump_partition(io, list[i], 0, 1048576, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE)) {
+			remove(dfile);
+			continue;
+		}
+	}
+	for (int i = 0; list[i] != NULL; i++) {
+		sprintf(dfile, "%s.bin", list[i]);
+		FILE* vb = fopen(dfile, "r");
+		if (!vb) {
+			DBG_LOG("File %s does not exist, skipping.\n", dfile);
+			continue;
+		}
+		fclose(vb);
 		vb = fopen(dfile, "rb+");
 		if (!vb) ERR_EXIT("fopen %s failed\n", dfile);
 		char header[4];
@@ -1713,12 +1738,22 @@ void dm_enable(spdio_t* io, int blk_size)
 					"vbmeta_system_ext", "vbmeta_system_ext_a", "vbmeta_system_ext_b",
 					"vbmeta_product", "vbmeta_product_a", "vbmeta_product_b",
 					"vbmeta_odm", "vbmeta_odm_a", "vbmeta_odm_b", NULL };
+	char dfile[40];
 	for (int i = 0; list[i] != NULL; i++) {
-		char dfile[40];
 		sprintf(dfile, "%s.bin", list[i]);
-		if (1048576 != dump_partition(io, list[i], 0, 1048576, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE)) continue;
-
-		FILE* vb;
+		if (1048576 != dump_partition(io, list[i], 0, 1048576, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE)) {
+			remove(dfile);
+			continue;
+		}
+	}
+	for (int i = 0; list[i] != NULL; i++) {
+		sprintf(dfile, "%s.bin", list[i]);
+		FILE* vb = fopen(dfile, "r");
+		if (!vb) {
+			DBG_LOG("File %s does not exist, skipping.\n", dfile);
+			continue;
+		}
+		fclose(vb);
 		vb = fopen(dfile, "rb+");
 		if (!vb) ERR_EXIT("fopen %s failed\n", dfile);
 		char header[4];
@@ -1778,7 +1813,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					if (changedPort == 0) m_bOpened = -1;
 					else if (DBT_DEVICEARRIVAL == wParam) {
 						if (!curPort) curPort = changedPort;
-						else if (curPort != changedPort) DBG_LOG("second port not supported\n");
 					}
 					else if (curPort == changedPort) m_bOpened = -1;
 					interface_checked = FALSE;
