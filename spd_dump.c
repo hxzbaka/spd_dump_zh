@@ -179,23 +179,24 @@ int main(int argc, char **argv) {
 	}
 
 #if !USE_LIBUSB
-	curPort = FindPort("SPRD U2S Diag");
 	if (at || bootmode >= 0)
 	{
-		if (curPort) ERR_EXIT("kick feature needs program running before connecting device to PC\n");
-		else
-		{
-			io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
-			if (io->hThread == NULL) return -1;
-			ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
-		}
+		io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
+		if (io->hThread == NULL) return -1;
+		ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
 		wait = 30 * REOPEN_FREQ;
 	}
-	else if (curPort) {
-		for (DWORD* port = ports; *port != 0; port++) { if (call_ConnectChannel(io->handle, *port)) break; }
-		if (!m_bOpened) curPort = 0;
+	else
+	{
+		curPort = FindPort("SPRD U2S Diag");
+		if (curPort)
+		{
+			for (DWORD* port = ports; *port != 0; port++) { if (call_ConnectChannel(io->handle, *port)) break; }
+			if (!m_bOpened) curPort = 0;
+			free(ports);
+			ports = NULL;
+		}
 	}
-	free(ports);
 #endif
 #if _WIN32
 	if (io->hThread == NULL) io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);

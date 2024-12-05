@@ -10,7 +10,6 @@ DWORD FindPort(const char* USB_DL)
 	DWORD dwIndex = 0;
 	DWORD count = 0;
 
-	if (ports) { free(ports); ports = NULL; }
 	DeviceInfoSet = SetupDiGetClassDevs(&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);
 
 	if (DeviceInfoSet == INVALID_HANDLE_VALUE) {
@@ -38,6 +37,7 @@ DWORD FindPort(const char* USB_DL)
 				DBG_LOG("Memory allocation failed.\n");
 				SetupDiDestroyDeviceInfoList(DeviceInfoSet);
 				free(ports);
+				ports = NULL;
 				return 0;
 			}
 			ports = temp;
@@ -1808,13 +1808,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				if (interface_checked) {
 					pDevPort = (PDEV_BROADCAST_PORT)pHdr;
 					DWORD changedPort;
-					if (is_diag) changedPort = FindPort("SPRD DIAG"); //changedPort = 0 when DBT_DEVICEREMOVECOMPLETE
+					if (is_diag) {
+						changedPort = FindPort("SPRD DIAG"); //changedPort = 0 when DBT_DEVICEREMOVECOMPLETE
+						free(ports);
+						ports = NULL;
+					}
 					else changedPort = my_strtoul(pDevPort->dbcp_name + 3, NULL, 0);
 					if (changedPort == 0) m_bOpened = -1;
-					else if (DBT_DEVICEARRIVAL == wParam) {
-						if (!curPort) curPort = changedPort;
+					else {
+						if (DBT_DEVICEARRIVAL == wParam) { if (!curPort) curPort = changedPort; }
+						else { if (curPort == changedPort) m_bOpened = -1; }
 					}
-					else if (curPort == changedPort) m_bOpened = -1;
 					interface_checked = FALSE;
 					is_diag = FALSE;
 				}
@@ -1880,8 +1884,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 
 	while (!done)
 	{
-		if (portName[0]) DBG_LOG("Waiting for cali_diag connection (%ds)\n", ms / 1000);
-		else DBG_LOG("Waiting for boot_diag connection (%ds)\n", ms / 1000);
+		DBG_LOG("Waiting for boot_diag/cali_diag connection (%ds)\n", ms / 1000);
 		for (int i = 0; ; i++) {
 			if (curPort) break;
 			if (100 * i >= ms) ERR_EXIT("find port failed\n");
