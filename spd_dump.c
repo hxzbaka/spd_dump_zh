@@ -100,7 +100,6 @@ int m_bOpened = 0;
 int fdl1_loaded = 0;
 int fdl2_executed = 0;
 int selected_ab = -1;
-DWORD* ports = NULL;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i, in_quote;
 	int wait = 30 * REOPEN_FREQ;
@@ -118,6 +117,7 @@ int main(int argc, char **argv) {
 	partition_t* ptable = NULL;
 #if !USE_LIBUSB
 	extern DWORD curPort;
+	extern DWORD* ports;
 #endif
 
 	io = spdio_init(0);
@@ -673,7 +673,7 @@ int main(int argc, char **argv) {
 			realsize = check_partition(io, name);
 			if (!realsize) {
 				if (selected_ab > 0) {
-					sprintf(name_ab, "%s_%c", name, 96 + selected_ab);
+					snprintf(name_ab, sizeof(name_ab), "%s_%c", name, 96 + selected_ab);
 					realsize = check_partition(io, name_ab);
 					name = name_ab;
 				}
@@ -700,7 +700,7 @@ int main(int argc, char **argv) {
 			char name_ab[36];
 			if (argcount <= 2) { DBG_LOG("r all/all_lite/part_name/part_id\n"); argc -= 2; argv += 2; continue; }
 			if (gpt_failed == 1) ptable = partition_list(io, fn_partlist, &part_count);
-			if (selected_ab > 0) sprintf(name_ab, "%s_%c", name, 96 + selected_ab);
+			if (selected_ab > 0) snprintf(name_ab, sizeof(name_ab), "%s_%c", name, 96 + selected_ab);
 			if (!memcmp(name, "splloader", 9)) {
 				realsize = 256 * 1024;
 			}
@@ -737,7 +737,7 @@ int main(int argc, char **argv) {
 					for (i = 0; i < part_count; i++)
 						if (0 == strncmp("l_", (*(ptable + i)).name, 2) || 0 == strncmp("nr_", (*(ptable + i)).name, 3)) {
 							char dfile[40];
-							sprintf(dfile, "%s.bin", (*(ptable + i)).name);
+							snprintf(dfile, sizeof(dfile), "%s.bin", (*(ptable + i)).name);
 							dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 						}
 					argc -= 2; argv += 2;
@@ -751,7 +751,7 @@ int main(int argc, char **argv) {
 						if (!memcmp((*(ptable + i)).name, "blackbox", 8)) continue;
 						else if (!memcmp((*(ptable + i)).name, "cache", 5)) continue;
 						else if (!memcmp((*(ptable + i)).name, "userdata", 8)) continue;
-						sprintf(dfile, "%s.bin", (*(ptable + i)).name);
+						snprintf(dfile, sizeof(dfile), "%s.bin", (*(ptable + i)).name);
 						dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 					}
 					argc -= 2; argv += 2;
@@ -768,7 +768,7 @@ int main(int argc, char **argv) {
 						else if (!memcmp((*(ptable + i)).name, "userdata", 8)) continue;
 						if (selected_ab == 1 && namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_b")) continue;
 						else if (selected_ab == 2 && namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_a")) continue;
-						sprintf(dfile, "%s.bin", (*(ptable + i)).name);
+						snprintf(dfile, sizeof(dfile), "%s.bin", (*(ptable + i)).name);
 						dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 					}
 					argc -= 2; argv += 2;
@@ -790,8 +790,8 @@ int main(int argc, char **argv) {
 				}
 			}
 			char dfile[40];
-			if (isdigit(str2[2][0])) sprintf(dfile, "%s.bin", name);
-			else sprintf(dfile, "%s.bin", str2[2]);
+			if (isdigit(str2[2][0])) snprintf(dfile, sizeof(dfile), "%s.bin", name);
+			else snprintf(dfile, sizeof(dfile), "%s.bin", str2[2]);
 			dump_partition(io, name, 0, realsize, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 2; argv += 2;
 
@@ -848,7 +848,7 @@ int main(int argc, char **argv) {
 				realsize = check_partition(io, name);
 				if (!realsize) {
 					if (selected_ab > 0) {
-						sprintf(name_ab, "%s_%c", name, 96 + selected_ab);
+						snprintf(name_ab, sizeof(name_ab), "%s_%c", name, 96 + selected_ab);
 						realsize = check_partition(io, name_ab);
 						name = name_ab;
 					}
@@ -898,7 +898,7 @@ int main(int argc, char **argv) {
 				realsize = check_partition(io, name);
 				if (!realsize) {
 					if (selected_ab > 0) {
-						sprintf(name_ab, "%s_%c", name, 96 + selected_ab);
+						snprintf(name_ab, sizeof(name_ab), "%s_%c", name, 96 + selected_ab);
 						realsize = check_partition(io, name_ab);
 						name = name_ab;
 					}

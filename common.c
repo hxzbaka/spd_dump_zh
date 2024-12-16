@@ -1,7 +1,7 @@
 #include "common.h"
 #if !USE_LIBUSB
 DWORD curPort = 0;
-extern DWORD* ports;
+DWORD* ports = NULL;
 DWORD FindPort(const char* USB_DL)
 {
 	const GUID GUID_DEVCLASS_PORTS = { 0x4d36e978, 0xe325, 0x11ce,{0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18} };
@@ -901,7 +901,7 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 	FILE* fp;
 	if (savepath[0]) {
 		char fix_fn[1024];
-		sprintf(fix_fn, "%s/%s", savepath, "pgpt.bin");
+		sprintf(fix_fn, "%s/pgpt.bin", savepath);
 		fp = fopen(fix_fn, "rb");
 	}
 	else fp = fopen("pgpt.bin", "rb");
@@ -1128,7 +1128,7 @@ void load_partition(spdio_t* io, const char* name,
 		encode_msg(io, BSL_CMD_DLOAD_RAW_START2, NULL, 0);
 		if (send_and_check(io)) { Da_Info.bSupportRawData = 0; goto fallback_load; }
 		step = Da_Info.dwFlushSize << 10;
-		uint8_t* rawbuf = (uint8_t*)malloc(step);
+		uint8_t* rawbuf = (uint8_t*)malloc(step + 1);
 		if (!rawbuf) ERR_EXIT("malloc failed\n");
 
 		for (offset = 0; (n64 = len - offset); offset += n) {
@@ -1463,11 +1463,12 @@ uint64_t str_to_size_ubi(const char* str, int* nand_info) {
 }
 
 void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) {
-	partition_t partitions[128];
 	const char* part1 = "Partitions>";
 	char* src, * p;
 	int part1_len = strlen(part1), found = 0, stage = 0, ubi = 0;
 	size_t size = 0;
+	partition_t* partitions = malloc(128 * sizeof(partition_t));
+	if (partitions == NULL) return;
 
 	if (!memcmp(fn, "ubi", 3)) ubi = 1;
 	src = (char*)loadfile(fn, &size, 1);
@@ -1521,6 +1522,8 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 	if (p - 1 != src + size) ERR_EXIT("xml: zero byte");
 	if (stage != 2) ERR_EXIT("xml: unexpected syntax\n");
 
+	int verbose = io->verbose;
+	if (selected_ab < 0) select_ab(io);
 	for (int i = 0; i < found; i++) {
 		DBG_LOG("Partition %d: name=%s, size=%llim\n", i + 1, partitions[i].name, partitions[i].size);
 		if (!memcmp(partitions[i].name, "userdata", 8)) continue;
@@ -1528,13 +1531,11 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		char* pn = partitions[i].name;
 		uint64_t realsize = 0;
 		char name_ab[36];
-		int verbose = io->verbose;
-		if (selected_ab < 0) select_ab(io);
 		io->verbose = 0;
 		realsize = check_partition(io, pn);
 		if (!realsize) {
 			if (selected_ab > 0) {
-				sprintf(name_ab, "%s_%c", pn, 96 + selected_ab);
+				snprintf(name_ab, sizeof(name_ab), "%s_%c", pn, 96 + selected_ab);
 				realsize = check_partition(io, name_ab);
 				pn = name_ab;
 			}
@@ -1555,7 +1556,7 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		else realsize = partitions[i].size << 20;
 
 		char dfile[40];
-		sprintf(dfile, "%s.bin", partitions[i].name);
+		snprintf(dfile, sizeof(dfile), "%s.bin", partitions[i].name);
 		dump_partition(io, pn, 0, realsize, dfile, blk_size);
 	}
 
@@ -1568,9 +1569,19 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		fclose(fo);
 	}
 	free(src);
+	free(partitions);
 }
 
 void load_partitions(spdio_t* io, const char* path, int blk_size) {
+	typedef struct {
+		char name[36];
+		char file_path[1024];
+		int written_flag;
+	} partition_info_t;
+
+	int partition_count = 0;
+	partition_info_t* partitions = malloc(128 * sizeof(partition_info_t));
+	if (partitions == NULL) return;
 	char* fn;
 #if _WIN32
 	char searchPath[ARGV_LEN];
@@ -1601,39 +1612,84 @@ void load_partitions(spdio_t* io, const char* path, int blk_size) {
 		size_t len = strlen(fn);
 		if (len >= 4 && strcmp(fn + len - 4, ".xml") == 0) continue;
 		if (!memcmp(fn, "pgpt", 4) || !memcmp(fn, "sprdpart", 8)) continue;
-		char fix_fn[1024];
-		snprintf(fix_fn, sizeof(fix_fn), "%s/%s", path, fn);
+
+		snprintf(partitions[partition_count].file_path, sizeof(partitions[partition_count].file_path), "%s/%s", path, fn);
 		char* dot = strrchr(fn, '.');
 		if (dot != NULL) *dot = '\0';
 
-		uint64_t realsize = 0;
-		char name_ab[36];
-		int verbose = io->verbose;
-		if (selected_ab < 0) select_ab(io);
-		io->verbose = 0;
-		realsize = check_partition(io, fn);
-		if (!realsize) {
-			if (selected_ab > 0) {
-				sprintf(name_ab, "%s_%c", fn, 96 + selected_ab);
-				realsize = check_partition(io, name_ab);
-				fn = name_ab;
-			}
-			if (!realsize) {
-				DBG_LOG("part not exist\n");
-				io->verbose = verbose;
-				continue;
-			}
-		}
-		io->verbose = verbose;
-
-		if (strstr(fn, "fixnv1")) load_nv_partition(io, fn, fix_fn, 4096);
-		else load_partition(io, fn, fix_fn, blk_size);
+		snprintf(partitions[partition_count].name, sizeof(partitions[partition_count].name), "%s", fn);
+		partitions[partition_count].written_flag = 0;
+		partition_count++;
 	}
 #if _WIN32
 	FindClose(hFind);
 #else
 	closedir(dir);
 #endif
+	int verbose = io->verbose;
+	if (selected_ab < 0) select_ab(io);
+	for (int i = 0; i < partition_count; i++) {
+		if (strcmp(partitions[i].name, "splloader") == 0
+			|| strcmp(partitions[i].name, "uboot_a") == 0
+			|| strcmp(partitions[i].name, "uboot_b") == 0
+			|| strcmp(partitions[i].name, "vbmeta_a") == 0
+			|| strcmp(partitions[i].name, "vbmeta_b") == 0) {
+			load_partition(io, partitions[i].name, partitions[i].file_path, blk_size);
+			partitions[i].written_flag = 1;
+			if (strcmp(partitions[i].name, "vbmeta_b") == 0) break;
+			continue;
+		}
+		if (strcmp(partitions[i].name, "uboot") == 0 || strcmp(partitions[i].name, "vbmeta") == 0) {
+			uint64_t realsize = 0;
+			char name_ab[36];
+			io->verbose = 0;
+			fn = partitions[i].name;
+			realsize = check_partition(io, fn);
+			if (!realsize) {
+				if (selected_ab > 0) {
+					snprintf(name_ab, sizeof(name_ab), "%s_%c", fn, 96 + selected_ab);
+					realsize = check_partition(io, name_ab);
+					fn = name_ab;
+				}
+				if (!realsize) {
+					DBG_LOG("part not exist\n");
+					io->verbose = verbose;
+					continue;
+				}
+			}
+			io->verbose = verbose;
+			load_partition(io, fn, partitions[i].file_path, blk_size);
+			partitions[i].written_flag = 1;
+			if(strcmp(partitions[i].name, "uboot")) break;
+			continue;
+		}
+	}
+
+	for (int i = 0; i < partition_count; i++) {
+		if (!partitions[i].written_flag) {
+			uint64_t realsize = 0;
+			char name_ab[36];
+			fn = partitions[i].name;
+			realsize = check_partition(io, fn);
+			if (!realsize) {
+				if (selected_ab > 0) {
+					snprintf(name_ab, sizeof(name_ab), "%s_%c", fn, 96 + selected_ab);
+					realsize = check_partition(io, name_ab);
+					fn = name_ab;
+				}
+				if (!realsize) {
+					DBG_LOG("part not exist\n");
+					io->verbose = verbose;
+					continue;
+				}
+			}
+			io->verbose = verbose;
+
+			if (strstr(fn, "fixnv1")) load_nv_partition(io, fn, partitions[i].file_path, 4096);
+			else load_partition(io, fn, partitions[i].file_path, blk_size);
+		}
+	}
+	free(partitions);
 }
 
 void get_Da_Info(spdio_t* io)
