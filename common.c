@@ -1563,10 +1563,13 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 	if (savepath[0]) {
 		DBG_LOG("saving dump list\n");
 		char fix_fn[1024];
-		sprintf(fix_fn, "%s/%s", savepath, fn);
-		FILE *fo = fopen(fix_fn, "wb");
-		fwrite(src, 1, size, fo);
-		fclose(fo);
+		char* ch;
+		if (ch = strrchr(fn, '/')) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else if (ch = strrchr(fn, '\\')) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else sprintf(fix_fn, "%s/%s", savepath, fn);
+		FILE* fo = fopen(fix_fn, "wb");
+		if (fo) { fwrite(src, 1, size, fo); fclose(fo); }
+		else DBG_LOG("create dump list failed, skipping.\n");
 	}
 	free(src);
 	free(partitions);
@@ -1977,10 +1980,10 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		if (at) payload[8] = 0x81;
 		else payload[8] = bootmode + 0x80;
 		if (io->verbose >= 2) {
-			DBG_LOG("send (%d):\n", 10);
-			print_mem(stderr, payload, 10);
+			DBG_LOG("send (%d):\n", sizeof(payload));
+			print_mem(stderr, payload, sizeof(payload));
 		}
-		if (!WriteFile(hSerial, payload, 10, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
+		if (!WriteFile(hSerial, payload, sizeof(payload), &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
 		if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) CloseHandle(hSerial);
 		else
 		{
@@ -1997,10 +2000,10 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 			if (!memcmp(io->recv_buf, payload, 10)) DBG_LOG("Warning: response is same as send\n");
 			uint8_t autod[] = { 0x7e,0,0,0,0,0x20,0,0x68,0,0x41,0x54,0x2b,0x53,0x50,0x52,0x45,0x46,0x3d,0x22,0x41,0x55,0x54,0x4f,0x44,0x4c,0x4f,0x41,0x44,0x45,0x52,0x22,0xd,0xa,0x7e };
 			if (io->verbose >= 2) {
-				DBG_LOG("send (%d):\n", 34);
-				print_mem(stderr, autod, 34);
+				DBG_LOG("send (%d):\n", sizeof(autod));
+				print_mem(stderr, autod, sizeof(autod));
 			}
-			if (!WriteFile(hSerial, autod, 34, &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
+			if (!WriteFile(hSerial, autod, sizeof(autod), &bytes_written, NULL)) ERR_EXIT("Error writing to serial port\n");
 			if (!ReadFile(hSerial, io->recv_buf, RECV_BUF_LEN, &bytes_read, NULL)) ERR_EXIT("read response from cali mode failed\n");
 			else
 			{

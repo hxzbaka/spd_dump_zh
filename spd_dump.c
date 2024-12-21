@@ -767,10 +767,10 @@ int main(int argc, char **argv) {
 						else if (!memcmp((*(ptable + i)).name, "cache", 5)) continue;
 						else if (!memcmp((*(ptable + i)).name, "userdata", 8)) continue;
 						if (selected_ab == 1 && namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_b")) continue;
-						else if (selected_ab == 2 && namelen > 2 && 0 == strcmp((*(ptable + i)).name + namelen - 2, "_a")) continue;
 						snprintf(dfile, sizeof(dfile), "%s.bin", (*(ptable + i)).name);
 						dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 					}
+					if (selected_ab == 2) DBG_LOG("When the device is in slot B, some partitions in slot A are still in use; therefore, all partitions are dumped.\n");
 					argc -= 2; argv += 2;
 					continue;
 				}
