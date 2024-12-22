@@ -1006,6 +1006,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 	if (32 * 1024 == size)
 		gpt_failed = gpt_info(ptable, fn, part_count_ptr);
 	if (gpt_failed) {
+		remove("pgpt.bin");
 		encode_msg(io, BSL_CMD_READ_PARTITION, NULL, 0);
 		send_msg(io);
 		ret = recv_msg(io);
@@ -1045,6 +1046,8 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 			size = READ32_LE(p + 0x48);
 			while (!(size >> divisor)) divisor--;
 		}
+		if (divisor == 10) Da_Info.dwStorageType = 0x102;
+		else Da_Info.dwStorageType = 0x103;
 		p = io->raw_buf + 4;
 		DBG_LOG("  0 %36s     256KB\n", "splloader");
 		for (i = 0; i < n; i++, p += 0x4c) {
