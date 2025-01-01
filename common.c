@@ -1014,12 +1014,14 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		ret = recv_type(io);
 		if (ret != BSL_REP_READ_PARTITION){
 			DBG_LOG("unexpected response (0x%04x)\n", ret);
+			gpt_failed = -1;
 			free(ptable);
 			return NULL;
 		}
 		size = READ16_BE(io->raw_buf + 2);
 		if (size % 0x4c) {
 			DBG_LOG("not divisible by struct size (0x%04lx)\n", size);
+			gpt_failed = -1;
 			free(ptable);
 			return NULL;
 		}
@@ -1083,6 +1085,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		return ptable;
 	}
 	else {
+		gpt_failed = -1;
 		free(ptable);
 		return NULL;
 	}
@@ -1097,7 +1100,8 @@ void repartition(spdio_t* io, const char* fn) {
 }
 
 void erase_partition(spdio_t* io, const char* name) {
-	select_partition(io, name, 0, 0, BSL_CMD_ERASE_FLASH);
+	if (!memcmp(name, "userdata", 8)) select_partition(io, name, 1048576, 0, BSL_CMD_ERASE_FLASH);
+	else select_partition(io, name, 0, 0, BSL_CMD_ERASE_FLASH);
 	send_and_check(io);
 }
 
@@ -1567,8 +1571,8 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		DBG_LOG("saving dump list\n");
 		char fix_fn[1024];
 		char* ch;
-		if (ch = strrchr(fn, '/')) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
-		else if (ch = strrchr(fn, '\\')) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		if ((ch = strrchr(fn, '/'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else if ((ch = strrchr(fn, '\\'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
 		else sprintf(fix_fn, "%s/%s", savepath, fn);
 		FILE* fo = fopen(fix_fn, "wb");
 		if (fo) { fwrite(src, 1, size, fo); fclose(fo); }
