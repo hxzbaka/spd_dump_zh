@@ -168,11 +168,11 @@ int main(int argc, char **argv) {
 #if !USE_LIBUSB
 		} else if (!strcmp(argv[1], "--kick")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
-			at = 1;
+			at = 1; stage = -1;
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "--kickto")) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
-			bootmode = atoi(argv[2]); at = 0;
+			bootmode = atoi(argv[2]); at = 0; stage = -1;
 			argc -= 2; argv += 2;
 #endif
 		} else break;
@@ -260,10 +260,19 @@ int main(int argc, char **argv) {
 	io->flags &= ~FLAGS_CRC16;
 	if (stage != -1) encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
 	else encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-	for (i = 0;; i++) {
-		send_msg(io);
-		recv_msg(io);
-		ret = recv_type(io);
+	for (i = 0; ; i++) {
+		if (io->recv_buf[2] == BSL_REP_VER)
+		{
+			ret = BSL_REP_VER;
+			io->flags |= FLAGS_CRC16;
+			memcpy(io->raw_buf + 4, io->recv_buf + 5, 5);
+			io->raw_buf[2] = 0;
+			io->raw_buf[3] = 5;
+		} else {
+			send_msg(io);
+			recv_msg(io);
+			ret = recv_type(io);
+		}
 		if (ret == BSL_REP_ACK || ret == BSL_REP_VER || ret == BSL_REP_VERIFY_ERROR)
 		{
 			if (ret == BSL_REP_VER)
@@ -451,7 +460,7 @@ int main(int argc, char **argv) {
 				io->flags &= ~FLAGS_CRC16;
 
 				encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
-				for (i = 0;; i++) {
+				for (i = 0; ; i++) {
 					send_msg(io);
 					recv_msg(io);
 					if (recv_type(io) == BSL_REP_VER) break;
@@ -925,7 +934,7 @@ int main(int argc, char **argv) {
 			read_pactime(io);
 			argc -= 1; argv += 1;
 
-		} else if (!strcmp(str2[1], "blk_size")) {
+		} else if (!strcmp(str2[1], "blk_size") || !strcmp(str2[1], "bs")) {
 			if (argcount <= 2) { DBG_LOG("blk_size byte\n\tmax is 65535\n"); argc -= 2; argv += 2; continue; }
 			blk_size = strtol(str2[2], NULL, 0);
 			blk_size = blk_size < 0 ? 0 :
