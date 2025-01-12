@@ -162,8 +162,8 @@ int main(int argc, char **argv) {
 #ifdef __ANDROID__
 		} else if (!strcmp(argv[1], "--usb-fd")) { // Termux spec
 			if (argc <= 2) ERR_EXIT("bad option\n");
-			xfd = atoi(argv[2]);
-			argc -= 2; argv += 2;
+			xfd = atoi(argv[argc - 1]);
+			argc -= 2; argv += 1;
 #endif
 #if !USE_LIBUSB
 		} else if (!strcmp(argv[1], "--kick")) {
