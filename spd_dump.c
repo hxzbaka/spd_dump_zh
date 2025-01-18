@@ -100,6 +100,7 @@ int m_bOpened = 0;
 int fdl1_loaded = 0;
 int fdl2_executed = 0;
 int selected_ab = -1;
+uint64_t fblk_size = 0;
 int main(int argc, char **argv) {
 	spdio_t *io = NULL; int ret, i, in_quote;
 	int wait = 30 * REOPEN_FREQ;
@@ -168,23 +169,25 @@ int main(int argc, char **argv) {
 #if !USE_LIBUSB
 		} else if (!strcmp(argv[1], "--kick")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
-			at = 1; stage = -1;
+			at = 1;
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "--kickto")) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
-			bootmode = atoi(argv[2]); at = 0; stage = -1;
+			bootmode = atoi(argv[2]); at = 0;
 			argc -= 2; argv += 2;
 #endif
 		} else break;
 	}
 
 #if !USE_LIBUSB
+	if (stage == 99) { bootmode = -1; at = 0; }
 	if (at || bootmode >= 0)
 	{
 		io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
 		if (io->hThread == NULL) return -1;
 		ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
 		wait = 30 * REOPEN_FREQ;
+		stage = -1;
 	}
 	else
 	{
@@ -939,6 +942,12 @@ int main(int argc, char **argv) {
 			blk_size = strtol(str2[2], NULL, 0);
 			blk_size = blk_size < 0 ? 0 :
 					blk_size > 0xffff ? 0xffff : blk_size;
+			argc -= 2; argv += 2;
+
+		} else if (!strcmp(str2[1], "fblk_size") || !strcmp(str2[1], "fbs")) {
+			if (argcount <= 2) { DBG_LOG("fblk_size mb\n"); argc -= 2; argv += 2; continue; }
+			fblk_size = strtoull(str2[2], NULL, 0) * 1024 * 1024;
+			fblk_size = fblk_size < 0 ? 0 : fblk_size;
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "verity")) {

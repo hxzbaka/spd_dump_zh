@@ -724,10 +724,11 @@ void print_progress_bar(float progress) {
 	completed0 = completed;
 }
 
+extern uint64_t fblk_size;
 uint64_t dump_partition(spdio_t* io,
 	const char* name, uint64_t start, uint64_t len,
 	const char* fn, unsigned step) {
-	uint32_t n, nread, t32; uint64_t offset, n64;
+	uint32_t n, nread, t32; uint64_t offset, n64, saved_size = 0;
 	int ret, mode64 = (start + len) >> 32;
 	FILE* fo;
 	if (!memcmp(name, "userdata", 8)) { if (!check_confirm("read userdata")) return 0; }
@@ -794,6 +795,11 @@ uint64_t dump_partition(spdio_t* io,
 		print_progress_bar((offset + nread - start) / (float)len);
 		offset += nread;
 		if (n != nread) break;
+
+		if (fblk_size) {
+			saved_size += nread;
+			if (saved_size >= fblk_size) { usleep(1000000); saved_size = 0; }
+		}
 	}
 	DBG_LOG("Read Part Done: %s+0x%llx, target: 0x%llx, read: 0x%llx\n",
 		name, (long long)start, (long long)len,
@@ -1356,8 +1362,10 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 		return 1;
 	}
 	else if (strstr(name, "runtimenv")) return 1;
-	find_partition_size_new(io, name, &offset);
-	if (offset) return offset;
+	if (selected_ab > 0) {
+		find_partition_size_new(io, name, &offset);
+		if (offset) return offset;
+	}
 
 	if (!strcmp(name, "ubipac")) end = 10;
 	select_partition(io, name, 128 * 1024, 0, BSL_CMD_READ_START);
