@@ -457,7 +457,11 @@ int main(int argc, char **argv) {
 					if (send_and_check(io)) exit(1);
 				}
 				DBG_LOG("EXEC FDL1\n");
-				if (addr == 0x5500 || addr == 0x65000800) { highspeed = 1; baudrate = 921600; }
+				if (addr == 0x5500 || addr == 0x65000800)
+				{
+					highspeed = 1;
+					if (!baudrate) baudrate = 921600;
+				}
 
 				/* FDL1 (chk = sum) */
 				io->flags &= ~FLAGS_CRC16;
@@ -947,7 +951,6 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(str2[1], "fblk_size") || !strcmp(str2[1], "fbs")) {
 			if (argcount <= 2) { DBG_LOG("fblk_size mb\n"); argc -= 2; argv += 2; continue; }
 			fblk_size = strtoull(str2[2], NULL, 0) * 1024 * 1024;
-			fblk_size = fblk_size < 0 ? 0 : fblk_size;
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "verity")) {
