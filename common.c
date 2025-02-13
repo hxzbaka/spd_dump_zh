@@ -59,8 +59,51 @@ void usleep(unsigned int us)
 {
 	Sleep(us / 1000);
 }
+#else
+libusb_device* curPort = NULL;
+libusb_device** ports = NULL;
+libusb_device* FindPort(void)
+{
+	libusb_device** devs;
+	int usb_cnt, count = 0;
+
+	usb_cnt = libusb_get_device_list(NULL, &devs);
+	if (usb_cnt < 0) {
+		DBG_LOG("Get device list error\n");
+		return NULL;
+	}
+	for (int i = 0; i < usb_cnt; i++) {
+		libusb_device* dev = devs[i];
+		struct libusb_device_descriptor desc;
+		int r = libusb_get_device_descriptor(dev, &desc);
+		if (r < 0) {
+			DBG_LOG("Failed to get device descriptor\n");
+			continue;
+		}
+		if (desc.idVendor == 0x1782 && desc.idProduct == 0x4d00)
+		{
+			libusb_device** temp = (libusb_device**)realloc(ports, (count + 2) * sizeof(libusb_device*));
+			if (temp == NULL) {
+				DBG_LOG("Memory allocation failed.\n");
+				libusb_free_device_list(devs, 1);
+				free(ports);
+				ports = NULL;
+				return NULL;
+			}
+			ports = temp;
+			ports[count++] = dev;
+		}
+	}
+	libusb_free_device_list(devs, 1);
+	if (count > 0) {
+		ports[count] = 0;
+		return ports[0];
+	}
+	return NULL;
+}
 #endif
 
+extern int bListenLibusb;
 extern int m_bOpened;
 
 void print_mem(FILE* f, uint8_t* buf, size_t len) {
@@ -198,11 +241,14 @@ spdio_t* spdio_init(int flags) {
 void spdio_free(spdio_t* io) {
 	if (!io) return;
 #if _WIN32
-	PostThreadMessage(io->iThread, THRD_MESSAGE_EXIT, 0, 0);
-	WaitForSingleObject(io->hThread, INFINITE);
-	CloseHandle(io->hThread);
+	if (!bListenLibusb) {
+		PostThreadMessage(io->iThread, THRD_MESSAGE_EXIT, 0, 0);
+		WaitForSingleObject(io->hThread, INFINITE);
+		CloseHandle(io->hThread);
+	}
 #endif
 #if USE_LIBUSB
+	if (bListenLibusb) stopUsbEventHandle();
 	libusb_close(io->dev_handle);
 	libusb_exit(NULL);
 #else
@@ -314,12 +360,10 @@ int send_msg(spdio_t* io) {
 	if (!io->enc_len)
 		ERR_EXIT("empty message\n");
 
-#if _WIN32
 	if (m_bOpened == -1) {
 		spdio_free(io);
 		ERR_EXIT("device removed, exiting...\n");
 	}
-#endif
 	if (io->verbose >= 2) {
 		DBG_LOG("send (%d):\n", io->enc_len);
 		print_mem(stderr, io->enc_buf, io->enc_len);
@@ -360,12 +404,10 @@ int recv_msg_orig(spdio_t* io) {
 	memset(io->recv_buf, 0, 8);
 	for (;;) {
 		if (pos >= len) {
-#if _WIN32
 			if (m_bOpened == -1) {
 				spdio_free(io);
 				ERR_EXIT("device removed, exiting...\n");
 			}
-#endif
 #if USE_LIBUSB
 			int err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &len, io->timeout);
 			if (err == LIBUSB_ERROR_NO_DEVICE)
@@ -589,7 +631,10 @@ unsigned dump_flash(spdio_t* io,
 	FILE* fo;
 	if (savepath[0]) {
 		char fix_fn[1024];
-		sprintf(fix_fn, "%s/%s", savepath, fn);
+		char* ch;
+		if ((ch = strrchr(fn, '/'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else if ((ch = strrchr(fn, '\\'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else sprintf(fix_fn, "%s/%s", savepath, fn);
 		fo = fopen(fix_fn, "wb");
 	}
 	else fo = fopen(fn, "wb");
@@ -632,7 +677,10 @@ unsigned dump_mem(spdio_t* io,
 	FILE* fo;
 	if (savepath[0]) {
 		char fix_fn[2048];
-		sprintf(fix_fn, "%s/%s", savepath, fn);
+		char* ch;
+		if ((ch = strrchr(fn, '/'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else if ((ch = strrchr(fn, '\\'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else sprintf(fix_fn, "%s/%s", savepath, fn);
 		fo = fopen(fix_fn, "wb");
 	}
 	else fo = fopen(fn, "wb");
@@ -764,7 +812,10 @@ uint64_t dump_partition(spdio_t* io,
 
 	if (savepath[0]) {
 		char fix_fn[2048];
-		sprintf(fix_fn, "%s/%s", savepath, fn);
+		char* ch;
+		if ((ch = strrchr(fn, '/'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else if ((ch = strrchr(fn, '\\'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
+		else sprintf(fix_fn, "%s/%s", savepath, fn);
 		fo = fopen(fix_fn, "wb");
 	}
 	else fo = fopen(fn, "wb");
@@ -844,11 +895,11 @@ uint64_t read_pactime(spdio_t* io) {
 
 int scan_xml_partitions(const char* fn, uint8_t* buf, size_t buf_size) {
 	const char* part1 = "Partitions>";
-	char* src, * p, name[36]; size_t size = 0;
+	char* src, * p, name[36]; size_t fsize = 0;
 	int part1_len = strlen(part1), found = 0, stage = 0;
-	src = (char*)loadfile(fn, &size, 1);
+	src = (char*)loadfile(fn, &fsize, 1);
 	if (!src) ERR_EXIT("loadfile failed\n");
-	src[size] = 0;
+	src[fsize] = 0;
 	p = src;
 	for (;;) {
 		int i, a = *p++, n; char c; long long size;
@@ -894,7 +945,7 @@ int scan_xml_partitions(const char* fn, uint8_t* buf, size_t buf_size) {
 		DBG_LOG("[%d] %s, %d\n", found, name, (int)size);
 		found++;
 	}
-	if (p - 1 != src + size) ERR_EXIT("xml: zero byte");
+	if (p - 1 != src + fsize) ERR_EXIT("xml: zero byte");
 	if (stage != 2) ERR_EXIT("xml: unexpected syntax\n");
 	free(src);
 	return found;
@@ -1147,12 +1198,10 @@ void load_partition(spdio_t* io, const char* name,
 
 		for (offset = 0; (n64 = len - offset); offset += n) {
 			n = (unsigned)(n64 > step ? step : n64);
-#if _WIN32
 			if (m_bOpened == -1) {
 				spdio_free(io);
 				ERR_EXIT("device removed, exiting...\n");
 			}
-#endif
 			if (fread(rawbuf, 1, n, fi) != n)
 				ERR_EXIT("fread(load) failed\n");
 //#if USE_LIBUSB
@@ -1848,7 +1897,7 @@ void dm_enable(spdio_t* io, int blk_size)
 #if _WIN32
 const _TCHAR CLASS_NAME[] = _T("Sample Window Class");
 
-HWND hWnd;
+HWND g_hWnd;
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -1914,16 +1963,15 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam)
 	wc.lpszClassName = CLASS_NAME;
 	if (0 == RegisterClass(&wc)) return -1;
 
-	hWnd = CreateWindowEx(0, CLASS_NAME, _T(""), WS_OVERLAPPEDWINDOW,
+	g_hWnd = CreateWindowEx(0, CLASS_NAME, _T(""), WS_OVERLAPPEDWINDOW,
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
 		NULL,       // Parent window
 		NULL,       // Menu
 		GetModuleHandle(NULL),  // Instance handle
 		NULL        // Additional application data
 	);
-	if (hWnd==NULL) return -1;
+	if (g_hWnd == NULL) return -1;
 
-	HDEVNOTIFY hDevNotify;
 	DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
 #if USE_LIBUSB
 	const GUID GUID_DEVINTERFACE = { 0xa5dcbf10, 0x6530, 0x11d2, { 0x90, 0x1f, 0x00, 0xc0, 0x4f, 0xb9, 0x51, 0xed } };
@@ -1934,7 +1982,7 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam)
 	NotificationFilter.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
 	NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
 	NotificationFilter.dbcc_classguid = GUID_DEVINTERFACE;
-	hDevNotify = RegisterDeviceNotification(hWnd, &NotificationFilter, DEVICE_NOTIFY_WINDOW_HANDLE);
+	if(RegisterDeviceNotification(g_hWnd, &NotificationFilter, DEVICE_NOTIFY_WINDOW_HANDLE) == NULL)  return -1;
 
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0))
@@ -1946,6 +1994,8 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam)
 
 	return 0;
 }
+#endif
+
 #if !USE_LIBUSB
 void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 {
@@ -1966,29 +2016,28 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
 		if (!bootmode) {
 			uint8_t hello[10] = { 0x7e,0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e };
+
+			if (!(bytes_written = call_Write(io->handle, hello, sizeof(hello)))) ERR_EXIT("Error writing to serial port\n");
 			if (io->verbose >= 2) {
-				DBG_LOG("send (%d):\n", sizeof(hello));
+				DBG_LOG("send (%d):\n", (int)sizeof(hello));
 				print_mem(stderr, hello, sizeof(hello));
 			}
-			if (!(bytes_written = call_Write(io->handle, hello, sizeof(hello)))) ERR_EXIT("Error writing to serial port\n");
 			if (!(bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout))) ERR_EXIT("read response from boot mode failed\n");
-			else
-			{
-				if (io->verbose >= 2) {
-					DBG_LOG("read (%d):\n", bytes_read);
-					print_mem(stderr, io->recv_buf, bytes_read);
-				}
-				if (io->recv_buf[2] == BSL_REP_VER) return;
+			if (io->verbose >= 2) {
+				DBG_LOG("read (%d):\n", bytes_read);
+				print_mem(stderr, io->recv_buf, bytes_read);
 			}
+			if (io->recv_buf[2] == BSL_REP_VER) return;
 			payload[8] = 0x82;
 		}
 		else if (at) payload[8] = 0x81;
 		else payload[8] = bootmode + 0x80;
+
+		if (!(bytes_written = call_Write(io->handle, payload, sizeof(payload)))) ERR_EXIT("Error writing to serial port\n");
 		if (io->verbose >= 2) {
-			DBG_LOG("send (%d):\n", sizeof(payload));
+			DBG_LOG("send (%d):\n", (int)sizeof(payload));
 			print_mem(stderr, payload, sizeof(payload));
 		}
-		if (!(bytes_written = call_Write(io->handle, payload, sizeof(payload)))) ERR_EXIT("Error writing to serial port\n");
 		if ((bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout)))
 		{
 			if (io->verbose >= 2) {
@@ -1999,12 +2048,13 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 			else if (io->recv_buf[2] != 0x7e)
 			{
 				uint8_t autod[] = { 0x7e,0,0,0,0,0x20,0,0x68,0,0x41,0x54,0x2b,0x53,0x50,0x52,0x45,0x46,0x3d,0x22,0x41,0x55,0x54,0x4f,0x44,0x4c,0x4f,0x41,0x44,0x45,0x52,0x22,0xd,0xa,0x7e };
-				if (io->verbose >= 2) {
-					DBG_LOG("send (%d):\n", sizeof(autod));
-					print_mem(stderr, autod, sizeof(autod));
-				}
+				usleep(500000);
 				if ((bytes_written = call_Write(io->handle, autod, sizeof(autod))))
 				{
+					if (io->verbose >= 2) {
+						DBG_LOG("send (%d):\n", (int)sizeof(autod));
+						print_mem(stderr, autod, sizeof(autod));
+					}
 					if (!(bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout))) ERR_EXIT("read response from cali mode failed\n");
 					else
 					{
@@ -2032,7 +2082,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 				m_bOpened = 0;
 				break;
 			}
-			if (i >= 50)
+			if (i >= 100)
 			{
 				if (io->recv_buf[2] == BSL_REP_VER) return;
 				else ERR_EXIT("kick reboot timeout, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
@@ -2042,5 +2092,184 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		if (!at) done = 1;
 	}
 }
-#endif
+#else
+pthread_t gUsbEventThrd;
+libusb_hotplug_callback_handle gHotplugCbHandle = 0;
+
+int HotplugCbFunc(libusb_context* ctx, libusb_device* device, libusb_hotplug_event event, void* user_data)
+{
+	struct libusb_device_descriptor desc;
+	if (!libusb_get_device_descriptor(device, &desc)) {
+		if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) { if (!curPort) curPort = device; }
+		else if (curPort == device) m_bOpened = -1;
+	}
+	return 0;
+}
+
+void* UsbThrdFunc(void* param) {
+	int ret;
+	while (bListenLibusb) {
+		ret = libusb_handle_events(NULL);
+		if (ret < 0)
+			DBG_LOG("libusb_handle_events() failed: %s\n", libusb_error_name(ret));
+	}
+	return NULL;
+}
+
+void startUsbEventHandle(void) {
+	int ret = libusb_hotplug_register_callback(
+		NULL,
+		LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT,
+		LIBUSB_HOTPLUG_NO_FLAGS,
+		0x1782,
+		LIBUSB_HOTPLUG_MATCH_ANY,
+		LIBUSB_HOTPLUG_MATCH_ANY,
+		HotplugCbFunc,
+		NULL,
+		&gHotplugCbHandle);
+	if (ret != LIBUSB_SUCCESS) ERR_EXIT("libusb_hotplug_register_callback failed, error: %d\n", ret);
+
+	ret = pthread_create(&gUsbEventThrd, NULL, UsbThrdFunc, NULL);
+	if (ret != 0) {
+		libusb_hotplug_deregister_callback(NULL, gHotplugCbHandle);
+		ERR_EXIT("Failed to create thread, error: %d\n", ret);
+	}
+
+	bListenLibusb = 1;
+}
+
+void stopUsbEventHandle(void) {
+	bListenLibusb = 0;
+	libusb_hotplug_deregister_callback(NULL, gHotplugCbHandle);
+
+	int ret = pthread_join(gUsbEventThrd, NULL);
+	if (ret != 0) DBG_LOG("Failed to join thread, error: %d\n", ret);
+}
+
+void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
+{
+	int err, bytes_written, bytes_read;
+	if (bootmode >= 0x80) ERR_EXIT("mode not exist\n");
+	int done = 0;
+
+	while (!done)
+	{
+		DBG_LOG("Waiting for boot_diag/cali_diag/dl_diag connection (%ds)\n", ms / 1000);
+		for (int i = 0; ; i++) {
+			if (curPort) break;
+			if (100 * i >= ms) ERR_EXIT("find port failed\n");
+			usleep(100000);
+		}
+		if (libusb_open(curPort, &io->dev_handle) < 0) ERR_EXIT("Connection failed\n");
+		int endpoints[2];
+		find_endpoints(io->dev_handle, endpoints);
+		io->endp_in = endpoints[0];
+		io->endp_out = endpoints[1];
+		err = libusb_control_transfer(io->dev_handle,
+			0x21, 34, 0x601, 0, NULL, 0, io->timeout);
+		if (err < 0) ERR_EXIT("libusb_control_transfer failed : %s\n",
+			libusb_error_name(err));
+		DBG_LOG("libusb_control_transfer ok\n");
+		m_bOpened = 1;
+
+		uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
+		if (!bootmode) {
+			uint8_t hello[10] = { 0x7e,0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e };
+
+			err = libusb_bulk_transfer(io->dev_handle,
+				io->endp_out, hello, sizeof(hello), &bytes_written, io->timeout);
+			if (err < 0)
+				ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+			if (io->verbose >= 2) {
+				DBG_LOG("send (%d):\n", (int)sizeof(hello));
+				print_mem(stderr, hello, sizeof(hello));
+			}
+			err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
+			if (err == LIBUSB_ERROR_NO_DEVICE)
+				ERR_EXIT("connection closed\n");
+			else if (err < 0)
+				ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
+			if (io->verbose >= 2) {
+				DBG_LOG("read (%d):\n", bytes_read);
+				print_mem(stderr, io->recv_buf, bytes_read);
+			}
+			if (io->recv_buf[2] == BSL_REP_VER) return;
+			payload[8] = 0x82;
+		}
+		else if (at) payload[8] = 0x81;
+		else payload[8] = bootmode + 0x80;
+
+		err = libusb_bulk_transfer(io->dev_handle,
+			io->endp_out, payload, sizeof(payload), &bytes_written, io->timeout);
+		if (err < 0)
+			ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+		if (io->verbose >= 2) {
+			DBG_LOG("send (%d):\n", (int)sizeof(payload));
+			print_mem(stderr, payload, sizeof(payload));
+		}
+		err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
+		if (err == LIBUSB_ERROR_NO_DEVICE)
+			DBG_LOG("connection closed\n");
+		else if (err < 0)
+			DBG_LOG("usb_recv failed : %s\n", libusb_error_name(err));
+		else
+		{
+			if (io->verbose >= 2) {
+				DBG_LOG("read (%d):\n", bytes_read);
+				print_mem(stderr, io->recv_buf, bytes_read);
+			}
+			if (io->recv_buf[2] == BSL_REP_VER) { if (io->recv_buf[9] < '4') return; }
+			else if (io->recv_buf[2] != 0x7e)
+			{
+				uint8_t autod[] = { 0x7e,0,0,0,0,0x20,0,0x68,0,0x41,0x54,0x2b,0x53,0x50,0x52,0x45,0x46,0x3d,0x22,0x41,0x55,0x54,0x4f,0x44,0x4c,0x4f,0x41,0x44,0x45,0x52,0x22,0xd,0xa,0x7e };
+				usleep(500000);
+				err = libusb_bulk_transfer(io->dev_handle,
+					io->endp_out, autod, sizeof(autod), &bytes_written, io->timeout);
+				if (err >= 0)
+				{
+					if (io->verbose >= 2) {
+						DBG_LOG("send (%d):\n", (int)sizeof(autod));
+						print_mem(stderr, autod, sizeof(autod));
+					}
+					err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
+					if (err == LIBUSB_ERROR_NO_DEVICE)
+						ERR_EXIT("connection closed\n");
+					else if (err < 0)
+						ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
+					else
+					{
+						uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
+						if (io->verbose >= 2) {
+							DBG_LOG("read (%d):\n", bytes_read);
+							print_mem(stderr, io->recv_buf, bytes_read);
+						}
+						if (!memcmp(io->recv_buf + bytes_read - 7, ok, 6)) done = 1;
+						else {
+							DBG_LOG("Unknown response\n");
+							if (io->verbose < 2) print_mem(stderr, io->recv_buf, bytes_read);
+						}
+					}
+				}
+			}
+		}
+		for (int i = 0; ; i++)
+		{
+			if (m_bOpened == -1)
+			{
+				libusb_close(io->dev_handle);
+				io->recv_buf[2] = 0;
+				curPort = 0;
+				m_bOpened = 0;
+				break;
+			}
+			if (i >= 100)
+			{
+				if (io->recv_buf[2] == BSL_REP_VER) return;
+				else ERR_EXIT("kick reboot timeout, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+			}
+			usleep(100000);
+		}
+		if (!at) done = 1;
+	}
+}
 #endif

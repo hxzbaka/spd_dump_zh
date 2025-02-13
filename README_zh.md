@@ -38,6 +38,8 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
 
   尝试重新连接在brom/fdl1/fdl2阶段的设备。数字输入多少无所谓（甚至非数字也行）。
 
+  处于brom/fdl1阶段的设备可以无限次重新连接，但在fdl2阶段只能重新连接一次
+
 - `--verbose <等级>`
 
   设置屏幕日志的详细程度（支持0、1或2，不影响文件日志）。
@@ -45,16 +47,14 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
 - `--kick`
 
   使用 `boot_diag->cali_diag->dl_diag` 途径连接设备。
-
-
+  
   boot_diag是在设备关机直接上电出现的u2s端口，其中cali_diag依赖原厂或少数经过定制的第三方recovery
 
 - `--kickto <模式>`
 
   使用`boot_diag->custom_diag` 途径连接设备。支持的模式为0-127。
-
-
-  (模式 1 = cali_diag, 模式 2 = dl_diag; 并非所有设备都支持模式 2)
+  
+  (模式0为ums9621平台的新版`--kickto 2`, 模式 1 = cali_diag, 模式 2 = dl_diag; 并非所有设备都支持模式 2)
 
 
 - `-h|--help|help`
@@ -147,7 +147,6 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
   根据XML类型分区列表重新分区。
 
 - `p|print`
-
 
   打印分区列表
 

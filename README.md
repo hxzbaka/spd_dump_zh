@@ -53,7 +53,7 @@ Then the prompt should display `FDL2>`.
 
   Connects the device using a custom route `boot_diag -> custom_diag`. Supported modes are 0-127.
 
-  (mode 1 = cali_diag, mode 2 = dl_diag; not all devices support mode 2).
+  (mode 0 = `--kickto 2` on ums9621, mode 1 = cali_diag, mode 2 = dl_diag; not all devices support mode 2).
 
 - `-h|--help|help`
 

@@ -33,7 +33,7 @@ void print_help(void)
 		"\t\tConnects the device using the route boot_diag -> cali_diag -> dl_diag.\n"
 		"\t--kickto <mode>\n"
 		"\t\tConnects the device using a custom route boot_diag -> custom_diag. Supported modes are 0-127.\n"
-		"\t\t(mode 1 = cali_diag, mode 2 = dl_diag; not all devices support mode 2).\n"
+		"\t\t(mode 0 is `kickto 2` on ums9621, mode 1 = cali_diag, mode 2 = dl_diag; not all devices support mode 2).\n"
 		"\t-?|-h|--help\n"
 		"\t\tShow help and usage information\n"
 		"\nRuntime Commands\n"
@@ -95,6 +95,7 @@ void print_help(void)
 #define REOPEN_FREQ 2
 extern char savepath[ARGV_LEN];
 extern DA_INFO_T Da_Info;
+int bListenLibusb = -1;
 int gpt_failed = 1;
 int m_bOpened = 0;
 int fdl1_loaded = 0;
@@ -119,6 +120,9 @@ int main(int argc, char **argv) {
 #if !USE_LIBUSB
 	extern DWORD curPort;
 	extern DWORD* ports;
+#else
+	extern libusb_device* curPort;
+	extern libusb_device** ports;
 #endif
 
 	io = spdio_init(0);
@@ -166,7 +170,6 @@ int main(int argc, char **argv) {
 			xfd = atoi(argv[argc - 1]);
 			argc -= 2; argv += 1;
 #endif
-#if !USE_LIBUSB
 		} else if (!strcmp(argv[1], "--kick")) {
 			if (argc <= 1) ERR_EXIT("bad option\n");
 			at = 1;
@@ -175,12 +178,12 @@ int main(int argc, char **argv) {
 			if (argc <= 2) ERR_EXIT("bad option\n");
 			bootmode = atoi(argv[2]); at = 0;
 			argc -= 2; argv += 2;
-#endif
 		} else break;
 	}
 
-#if !USE_LIBUSB
 	if (stage == 99) { bootmode = -1; at = 0; }
+#if !USE_LIBUSB
+	bListenLibusb = 0;
 	if (at || bootmode >= 0)
 	{
 		io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
@@ -194,23 +197,86 @@ int main(int argc, char **argv) {
 		curPort = FindPort("SPRD U2S Diag");
 		if (curPort)
 		{
-			for (DWORD* port = ports; *port != 0; port++) { if (call_ConnectChannel(io->handle, *port)) break; }
+			for (DWORD* port = ports; *port != 0; port++)
+			{
+				if (call_ConnectChannel(io->handle, *port))
+				{
+					curPort = *port;
+					break;
+				}
+			}
 			if (!m_bOpened) curPort = 0;
 			free(ports);
 			ports = NULL;
 		}
 	}
+#else
+	if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) { DBG_LOG("hotplug unsupported on this platform\n"); bListenLibusb = 0; bootmode = -1; at = 0; }
+	if (at || bootmode >= 0)
+	{
+		startUsbEventHandle();
+		ChangeMode(io, wait / REOPEN_FREQ * 1000, bootmode, at);
+		wait = 30 * REOPEN_FREQ;
+		stage = -1;
+	}
+	else
+	{
+		curPort = FindPort();
+		if (curPort)
+		{
+			for (libusb_device** port = ports; *port != 0; port++)
+			{
+				if (libusb_open(*port, &io->dev_handle) >= 0) {
+					int endpoints[2];
+					find_endpoints(io->dev_handle, endpoints);
+					io->endp_in = endpoints[0];
+					io->endp_out = endpoints[1];
+					ret = libusb_control_transfer(io->dev_handle,
+						0x21, 34, 0x601, 0, NULL, 0, io->timeout);
+					if (ret < 0)
+						ERR_EXIT("libusb_control_transfer failed : %s\n",
+							libusb_error_name(ret));
+					DBG_LOG("libusb_control_transfer ok\n");
+					m_bOpened = 1;
+					curPort = *port;
+					break;
+				}
+			}
+			if (!m_bOpened) curPort = 0;
+			free(ports);
+			ports = NULL;
+		}
+	}
+	if (bListenLibusb < 0) startUsbEventHandle();
 #endif
 #if _WIN32
-	if (io->hThread == NULL) io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
-	if (io->hThread == NULL) return -1;
+	if (!bListenLibusb) {
+		if (io->hThread == NULL) io->hThread = CreateThread(NULL, 0, ThrdFunc, NULL, 0, &io->iThread);
+		if (io->hThread == NULL) return -1;
+	}
 #endif
 #ifndef __ANDROID__
 	if (!m_bOpened) DBG_LOG("Waiting for dl_diag connection (%ds)\n", wait / REOPEN_FREQ);
 	for (i = 0; ; i++) {
 #if USE_LIBUSB
-		io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
-		if (io->dev_handle) break;
+		if (bListenLibusb) { if (curPort) break; }
+		else {
+			io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
+			if (io->dev_handle) {
+				int endpoints[2];
+				find_endpoints(io->dev_handle, endpoints);
+				io->endp_in = endpoints[0];
+				io->endp_out = endpoints[1];
+				ret = libusb_control_transfer(io->dev_handle,
+					0x21, 34, 0x601, 0, NULL, 0, io->timeout);
+				if (ret < 0)
+					ERR_EXIT("libusb_control_transfer failed : %s\n",
+						libusb_error_name(ret));
+				DBG_LOG("libusb_control_transfer ok\n");
+				m_bOpened = 1;
+				break;
+			}
+		}
 		if (i >= wait)
 			ERR_EXIT("libusb_open_device failed\n");
 #else
@@ -243,23 +309,28 @@ int main(int argc, char **argv) {
 #endif // __ANDROID__
 
 #if USE_LIBUSB
-	m_bOpened = 1;
-	int endpoints[2];
-	find_endpoints(io->dev_handle, endpoints);
-	io->endp_in = endpoints[0];
-	io->endp_out = endpoints[1];
+	if (!m_bOpened)
+	{
+		if (libusb_open(curPort, &io->dev_handle) >= 0)
+		{
+			int endpoints[2];
+			find_endpoints(io->dev_handle, endpoints);
+			io->endp_in = endpoints[0];
+			io->endp_out = endpoints[1];
+			ret = libusb_control_transfer(io->dev_handle,
+				0x21, 34, 0x601, 0, NULL, 0, io->timeout);
+			if (ret < 0)
+				ERR_EXIT("libusb_control_transfer failed : %s\n",
+					libusb_error_name(ret));
+			DBG_LOG("libusb_control_transfer ok\n");
+			m_bOpened = 1;
+		}
+		else ERR_EXIT("Connection failed\n");
+	}
 #else
 	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("Connection failed\n");
 #endif
 	io->flags |= FLAGS_TRANSCODE;
-#if USE_LIBUSB
-	ret = libusb_control_transfer(io->dev_handle,
-			0x21, 34, 0x601, 0, NULL, 0, io->timeout);
-	if (ret < 0)
-		ERR_EXIT("libusb_control_transfer failed : %s\n",
-				libusb_error_name(ret));
-	DBG_LOG("libusb_control_transfer ok\n");
-#endif
 	io->flags &= ~FLAGS_CRC16;
 	if (stage != -1) encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
 	else encode_msg(io, BSL_CMD_CHECK_BAUD, NULL, 1);
@@ -344,6 +415,7 @@ int main(int argc, char **argv) {
 		}
 		else
 		{
+			char ifs = '"';
 			str2 = (char**)malloc(ARGC_MAX * sizeof(char*));
 			memset(str1, 0, sizeof(str1));
 			argcount = 0;
@@ -368,7 +440,8 @@ int main(int argc, char **argv) {
 					if (!str2[argcount]) ERR_EXIT("malloc failed\n");
 					memset(str2[argcount], 0, ARGV_LEN);
 				}
-				if (temp[0] == '"')
+				if (temp[0] == '\'') ifs = '\'';
+				if (temp[0] == ifs)
 				{
 					in_quote = 1;
 					temp += 1;
@@ -378,7 +451,7 @@ int main(int argc, char **argv) {
 					strcat(str2[argcount], " ");
 				}
 
-				if (temp[strlen(temp) - 1] == '"')
+				if (temp[strlen(temp) - 1] == ifs)
 				{
 					in_quote = 0;
 					temp[strlen(temp) - 1] = 0;
@@ -389,9 +462,14 @@ int main(int argc, char **argv) {
 			}
 			argcount++;
 		}
-		if (argcount == 1) { str2[1] = ""; in_quote = -1; }
+		if (argcount == 1)
+		{
+			str2[1] = malloc(1);
+			if (str2[1]) str2[1][0] = '\0';
+			else ERR_EXIT("malloc failed\n");
+		}
 
-		if (!strncmp(str2[1], "sendloop", 8)) {
+		if (!strcmp(str2[1], "sendloop")) {
 			const char* fn; uint32_t addr = 0; FILE* fi;
 			if (argcount <= 3) { DBG_LOG("sendloop FILE addr\n"); argc -= 3; argv += 3; continue; }
 
@@ -406,7 +484,7 @@ int main(int argc, char **argv) {
 			}
 			argc -= 3; argv += 3;
 		}
-		else if (!strncmp(str2[1], "send", 4)) {
+		else if (!strcmp(str2[1], "send")) {
 			const char* fn; uint32_t addr = 0; FILE* fi;
 			if (argcount <= 3) { DBG_LOG("send FILE addr\n"); argc -= 3; argv += 3; continue; }
 
@@ -664,6 +742,7 @@ int main(int argc, char **argv) {
 			if (argcount <= 2) { DBG_LOG("bad command\n"); argc -= 2; argv += 2; continue; }
 
 			name = str2[2];
+			if (selected_ab < 0) select_ab(io);
 			find_partition_size(io, name);
 			argc -= 2; argv += 2;
 
@@ -1053,16 +1132,13 @@ int main(int argc, char **argv) {
 			print_help();
 			argc = 1;
 		}
-		if (in_quote != -1)
-			for (i = 1; i < argcount; i++)
-				free(str2[i]);
+		i = 1;
+		do { free(str2[i++]); } while (i < argcount);
 		free(str2);
-#if _WIN32
 		if (m_bOpened == -1) {
 			DBG_LOG("device removed, exiting...\n");
 			break;
 		}
-#endif
 	}
 	free(ptable);
 	spdio_free(io);

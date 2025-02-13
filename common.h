@@ -44,7 +44,12 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam);
 
 #if USE_LIBUSB
 #include <libusb-1.0/libusb.h>
+#include <pthread.h>
 #include <unistd.h>
+libusb_device* FindPort(void);
+void startUsbEventHandle(void);
+void stopUsbEventHandle(void);
+void find_endpoints(libusb_device_handle* dev_handle, int result[2]);
 #else
 #include <setupapi.h>
 #include "Wrapper.h"
@@ -191,12 +196,7 @@ typedef struct {
 #pragma pack()
 
 void print_string(FILE* f, const void* src, size_t n);
-
-#if USE_LIBUSB
-void find_endpoints(libusb_device_handle* dev_handle, int result[2]);
-#else
 void ChangeMode(spdio_t* io, int ms, int bootmode, int at);
-#endif
 
 spdio_t* spdio_init(int flags);
 void spdio_free(spdio_t* io);
