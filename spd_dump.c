@@ -222,9 +222,9 @@ int main(int argc, char **argv) {
 	else
 	{
 		curPort = FindPort();
-		if (curPort)
+		if (curPort != NULL)
 		{
-			for (libusb_device** port = ports; *port != 0; port++)
+			for (libusb_device** port = ports; *port != NULL; port++)
 			{
 				if (libusb_open(*port, &io->dev_handle) >= 0) {
 					int endpoints[2];

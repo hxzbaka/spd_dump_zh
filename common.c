@@ -96,7 +96,7 @@ libusb_device* FindPort(void)
 	}
 	libusb_free_device_list(devs, 1);
 	if (count > 0) {
-		ports[count] = 0;
+		ports[count] = NULL;
 		return ports[0];
 	}
 	return NULL;
@@ -1916,9 +1916,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			case DBT_DEVTYP_DEVICEINTERFACE:
 				pDevInf = (PDEV_BROADCAST_DEVICEINTERFACE)pHdr;
 #if USE_LIBUSB
-				if (my_strstr(pDevInf->dbcc_name, _T("VID_1782&PID_4D00")))
-					if (DBT_DEVICEREMOVECOMPLETE == wParam)
-						m_bOpened = -1;
+				if (DBT_DEVICEREMOVECOMPLETE == wParam)
+				{
+					libusb_device* changedPort = FindPort();
+					if (changedPort == NULL) m_bOpened = -1;
+					else
+					{
+						libusb_device** port = ports;
+						while (*port != NULL)
+						{
+							if (curPort == *port) break;
+							port++;
+						}
+						if (*port == NULL) m_bOpened = -1;
+						free(ports);
+						ports = NULL;
+					}
+				}
 #else
 				if (my_strstr(pDevInf->dbcc_name, _T("VID_1782&PID_4D00"))) interface_checked = TRUE;
 				else if (my_strstr(pDevInf->dbcc_name, _T("VID_1782&PID_4D03"))) {
