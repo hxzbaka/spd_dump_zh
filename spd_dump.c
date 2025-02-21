@@ -467,6 +467,7 @@ int main(int argc, char **argv) {
 			str2[1] = malloc(1);
 			if (str2[1]) str2[1][0] = '\0';
 			else ERR_EXIT("malloc failed\n");
+			argcount++;
 		}
 
 		if (!strcmp(str2[1], "sendloop")) {
@@ -1132,8 +1133,9 @@ int main(int argc, char **argv) {
 			print_help();
 			argc = 1;
 		}
-		i = 1;
-		do { free(str2[i++]); } while (i < argcount);
+		if (in_quote != -1)
+			for (i = 1; i < argcount; i++)
+				free(str2[i]);
 		free(str2);
 		if (m_bOpened == -1) {
 			DBG_LOG("device removed, exiting...\n");

@@ -2069,8 +2069,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 						DBG_LOG("send (%d):\n", (int)sizeof(autod));
 						print_mem(stderr, autod, sizeof(autod));
 					}
-					if (!(bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout))) ERR_EXIT("read response from cali mode failed\n");
-					else
+					if ((bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout)))
 					{
 						uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
 						if (io->verbose >= 2) {
@@ -2203,6 +2202,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 				ERR_EXIT("connection closed\n");
 			else if (err < 0)
 				ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
+			if (!bytes_read) ERR_EXIT("read response from boot mode failed\n");
 			if (io->verbose >= 2) {
 				DBG_LOG("read (%d):\n", bytes_read);
 				print_mem(stderr, io->recv_buf, bytes_read);
@@ -2225,8 +2225,8 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		if (err == LIBUSB_ERROR_NO_DEVICE)
 			DBG_LOG("connection closed\n");
 		else if (err < 0)
-			DBG_LOG("usb_recv failed : %s\n", libusb_error_name(err));
-		else
+			ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
+		else if (bytes_read)
 		{
 			if (io->verbose >= 2) {
 				DBG_LOG("read (%d):\n", bytes_read);
@@ -2247,10 +2247,10 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 					}
 					err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
 					if (err == LIBUSB_ERROR_NO_DEVICE)
-						ERR_EXIT("connection closed\n");
+						DBG_LOG("connection closed\n");
 					else if (err < 0)
 						ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
-					else
+					else if (bytes_read)
 					{
 						uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
 						if (io->verbose >= 2) {
