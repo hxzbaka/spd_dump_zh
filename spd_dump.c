@@ -227,17 +227,7 @@ int main(int argc, char **argv) {
 			for (libusb_device** port = ports; *port != NULL; port++)
 			{
 				if (libusb_open(*port, &io->dev_handle) >= 0) {
-					int endpoints[2];
-					find_endpoints(io->dev_handle, endpoints);
-					io->endp_in = endpoints[0];
-					io->endp_out = endpoints[1];
-					ret = libusb_control_transfer(io->dev_handle,
-						0x21, 34, 0x601, 0, NULL, 0, io->timeout);
-					if (ret < 0)
-						ERR_EXIT("libusb_control_transfer failed : %s\n",
-							libusb_error_name(ret));
-					DBG_LOG("libusb_control_transfer ok\n");
-					m_bOpened = 1;
+					call_Initialize_libusb(io);
 					curPort = *port;
 					break;
 				}
@@ -255,7 +245,26 @@ int main(int argc, char **argv) {
 		if (io->hThread == NULL) return -1;
 	}
 #endif
-#ifndef __ANDROID__
+#ifdef __ANDROID__
+	DBG_LOG("Try to convert termux transfered usb port fd.\n");
+	// handle
+	if (xfd < 0)
+		ERR_EXIT("Example: termux-usb -e \"./spd_dump --usb-fd\" /dev/bus/usb/xxx/xxx\n"
+			"run on android need provide --usb-fd\n");
+
+	if (libusb_wrap_sys_device(NULL, (intptr_t)xfd, &io->dev_handle))
+		ERR_EXIT("libusb_wrap_sys_device exit unconditionally!\n");
+
+	device = libusb_get_device(io->dev_handle);
+	if (libusb_get_device_descriptor(device, &desc))
+		ERR_EXIT("libusb_get_device exit unconditionally!");
+
+	DBG_LOG("Vendor ID: %04x\nProduct ID: %04x\n", desc.idVendor, desc.idProduct);
+	if (desc.idVendor != 0x1782 || desc.idProduct != 0x4d00) {
+		ERR_EXIT("It seems spec device not a spd device!\n");
+	}
+	call_Initialize_libusb(io);
+#else
 	if (!m_bOpened) DBG_LOG("Waiting for dl_diag connection (%ds)\n", wait / REOPEN_FREQ);
 	for (i = 0; ; i++) {
 #if USE_LIBUSB
@@ -263,17 +272,7 @@ int main(int argc, char **argv) {
 		else {
 			io->dev_handle = libusb_open_device_with_vid_pid(NULL, 0x1782, 0x4d00);
 			if (io->dev_handle) {
-				int endpoints[2];
-				find_endpoints(io->dev_handle, endpoints);
-				io->endp_in = endpoints[0];
-				io->endp_out = endpoints[1];
-				ret = libusb_control_transfer(io->dev_handle,
-					0x21, 34, 0x601, 0, NULL, 0, io->timeout);
-				if (ret < 0)
-					ERR_EXIT("libusb_control_transfer failed : %s\n",
-						libusb_error_name(ret));
-				DBG_LOG("libusb_control_transfer ok\n");
-				m_bOpened = 1;
+				call_Initialize_libusb(io);
 				break;
 			}
 		}
@@ -287,48 +286,15 @@ int main(int argc, char **argv) {
 #endif
 		usleep(1000000 / REOPEN_FREQ);
 	}
-#else
-	DBG_LOG("Try to convert termux transfered usb port fd.\n");
-	// handle
-	if (xfd < 0)
-		ERR_EXIT("Example: termux-usb -e \"./spd_dump --usb-fd\" /dev/bus/usb/xxx/xxx\n"
-				 "run on android need provide --usb-fd\n");
-#if USE_LIBUSB
-	if (libusb_wrap_sys_device(NULL, (intptr_t)xfd, &io->dev_handle))
-		ERR_EXIT("libusb_wrap_sys_device exit unconditionally!\n");
-
-	device = libusb_get_device(io->dev_handle);
-	if (libusb_get_device_descriptor(device, &desc))
-		ERR_EXIT("libusb_get_device exit unconditionally!");
-
-	DBG_LOG("Vendor ID: %04x\nProduct ID: %04x\n", desc.idVendor, desc.idProduct);
-	if (desc.idVendor != 0x1782 || desc.idProduct != 0x4d00) {
-		ERR_EXIT("It seems spec device not a spd device!\n");
-	}
-#endif // USE_LIBUSB
-#endif // __ANDROID__
-
 #if USE_LIBUSB
 	if (!m_bOpened)
 	{
-		if (libusb_open(curPort, &io->dev_handle) >= 0)
-		{
-			int endpoints[2];
-			find_endpoints(io->dev_handle, endpoints);
-			io->endp_in = endpoints[0];
-			io->endp_out = endpoints[1];
-			ret = libusb_control_transfer(io->dev_handle,
-				0x21, 34, 0x601, 0, NULL, 0, io->timeout);
-			if (ret < 0)
-				ERR_EXIT("libusb_control_transfer failed : %s\n",
-					libusb_error_name(ret));
-			DBG_LOG("libusb_control_transfer ok\n");
-			m_bOpened = 1;
-		}
+		if (libusb_open(curPort, &io->dev_handle) >= 0) call_Initialize_libusb(io);
 		else ERR_EXIT("Connection failed\n");
 	}
 #else
 	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("Connection failed\n");
+#endif
 #endif
 	io->flags |= FLAGS_TRANSCODE;
 	io->flags &= ~FLAGS_CRC16;
@@ -497,22 +463,47 @@ int main(int argc, char **argv) {
 			send_file(io, fn, addr, 0, 528);
 			argc -= 3; argv += 3;
 		}
-		else if (!strncmp(str2[1], "fdl", 3)) {
+		else if (!strncmp(str2[1], "fdl", 3) || !strncmp(str2[1], "loadfdl", 7)) {
 			const char *fn; uint32_t addr = 0; FILE *fi;
-			if (argcount <= 3) { DBG_LOG("fdl FILE addr\n"); argc -= 3; argv += 3; continue; }
+			int addr_in_name = !strncmp(str2[1], "loadfdl", 7);
+			int argchange;
 
 			fn = str2[2];
-			addr = strtoul(str2[3], NULL, 0);
+			if (addr_in_name) {
+				argchange = 2;
+				if (argcount <= argchange) { DBG_LOG("loadfdl FILE\n"); argc -= argchange; argv += argchange; continue; }
+				char* pos = NULL, * last_pos = NULL;
+
+				pos = strstr(fn, "0X");
+				while (pos) {
+					last_pos = pos;
+					pos = strstr(pos + 2, "0X");
+				}
+				if (last_pos == NULL) {
+					pos = strstr(fn, "0x");
+					while (pos) {
+						last_pos = pos;
+						pos = strstr(pos + 2, "0x");
+					}
+				}
+				if (last_pos) addr = strtoul(last_pos, NULL, 16);
+				else DBG_LOG("\"0x\" not found in name.\n");
+			}
+			else {
+				argchange = 3;
+				if (argcount <= argchange) { DBG_LOG("fdl FILE addr\n"); argc -= argchange; argv += argchange; continue; }
+				addr = strtoul(str2[3], NULL, 0);
+			}
 
 			if (fdl2_executed > 0) {
 				DBG_LOG("FDL2 ALREADY EXECUTED, SKIP\n");
-				argc -= 3; argv += 3;
+				argc -= argchange; argv += argchange;
 				continue;
 			} else if (fdl1_loaded > 0) {
 				if (fdl2_executed != -1)
 				{
 					fi = fopen(fn, "r");
-					if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
+					if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= argchange; argv += argchange; continue; }
 					else fclose(fi);
 					send_file(io, fn, addr, end_data, blk_size ? blk_size : 528);
 				}
@@ -520,7 +511,7 @@ int main(int argc, char **argv) {
 				if (fdl1_loaded != -1)
 				{
 					fi = fopen(fn, "r");
-					if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= 3; argv += 3; continue; }
+					if (fi == NULL) { DBG_LOG("File does not exist.\n"); argc -= argchange; argv += argchange; continue; }
 					else fclose(fi);
 					send_file(io, fn, addr, end_data, 528);
 					if (exec_addr) {
@@ -611,7 +602,7 @@ int main(int argc, char **argv) {
 				}
 				fdl1_loaded = 1;
 			}
-			argc -= 3; argv += 3;
+			argc -= argchange; argv += argchange;
 
 		} else if (!strcmp(str2[1], "exec")) {
 			if (fdl2_executed > 0) {

@@ -19,12 +19,6 @@
 #define LIBUSB_DETACH 1
 #endif
 
-#ifdef __ANDROID__
-#ifndef USE_LIBUSB
-#error "missing USE_LIBUSB defination on android platform!"
-#endif
-#endif
-
 #if _WIN32
 #include <Windows.h>
 #include <Dbt.h>
@@ -46,17 +40,11 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam);
 #include <libusb-1.0/libusb.h>
 #include <pthread.h>
 #include <unistd.h>
-libusb_device* FindPort(void);
-void startUsbEventHandle(void);
-void stopUsbEventHandle(void);
-void find_endpoints(libusb_device_handle* dev_handle, int result[2]);
 #else
 #include <setupapi.h>
 #include "Wrapper.h"
 #define fseeko _fseeki64
 #define ftello _ftelli64
-DWORD FindPort(const char* USB_DL);
-void usleep(unsigned int us);
 #endif
 
 #include "spd_cmd.h"
@@ -194,6 +182,17 @@ typedef struct {
 	uint32_t crc32_le;
 } bootloader_control;
 #pragma pack()
+
+#if USE_LIBUSB
+libusb_device* FindPort(void);
+void startUsbEventHandle(void);
+void stopUsbEventHandle(void);
+void find_endpoints(libusb_device_handle* dev_handle, int result[2]);
+void call_Initialize_libusb(spdio_t* io);
+#else
+DWORD FindPort(const char* USB_DL);
+void usleep(unsigned int us);
+#endif
 
 void print_string(FILE* f, const void* src, size_t n);
 void ChangeMode(spdio_t* io, int ms, int bootmode, int at);

@@ -1160,7 +1160,7 @@ void repartition(spdio_t* io, const char* fn) {
 void erase_partition(spdio_t* io, const char* name) {
 	if (!memcmp(name, "userdata", 8)) select_partition(io, name, 1048576, 0, BSL_CMD_ERASE_FLASH);
 	else select_partition(io, name, 0, 0, BSL_CMD_ERASE_FLASH);
-	send_and_check(io);
+	if (!send_and_check(io)) DBG_LOG("Erase Part Done: %s\n", name);
 }
 
 void load_partition(spdio_t* io, const char* name,
@@ -2174,16 +2174,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 			usleep(100000);
 		}
 		if (libusb_open(curPort, &io->dev_handle) < 0) ERR_EXIT("Connection failed\n");
-		int endpoints[2];
-		find_endpoints(io->dev_handle, endpoints);
-		io->endp_in = endpoints[0];
-		io->endp_out = endpoints[1];
-		err = libusb_control_transfer(io->dev_handle,
-			0x21, 34, 0x601, 0, NULL, 0, io->timeout);
-		if (err < 0) ERR_EXIT("libusb_control_transfer failed : %s\n",
-			libusb_error_name(err));
-		DBG_LOG("libusb_control_transfer ok\n");
-		m_bOpened = 1;
+		call_Initialize_libusb(io);
 
 		uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
 		if (!bootmode) {
@@ -2285,5 +2276,17 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		}
 		if (!at) done = 1;
 	}
+}
+
+void call_Initialize_libusb(spdio_t* io)
+{
+	int endpoints[2];
+	find_endpoints(io->dev_handle, endpoints);
+	io->endp_in = endpoints[0];
+	io->endp_out = endpoints[1];
+	int ret = libusb_control_transfer(io->dev_handle, 0x21, 34, 0x601, 0, NULL, 0, io->timeout);
+	if (ret < 0) ERR_EXIT("libusb_control_transfer failed : %s\n", libusb_error_name(ret));
+	DBG_LOG("libusb_control_transfer ok\n");
+	m_bOpened = 1;
 }
 #endif
