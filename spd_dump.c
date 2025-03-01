@@ -373,11 +373,26 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	char** save_argv = NULL;
 	while (1) {
+		if (fdl1_loaded == -1) argc += 2;
+		else if (fdl2_executed == -1) argc += 1;
 		if (argc > 1)
 		{
 			str2 = (char**)malloc(argc * sizeof(char*));
-			for (i = 1; i < argc; i++) str2[i] = argv[i];
+			if (fdl1_loaded == -1) {
+				save_argv = argv;
+				str2[1] = "loadfdl";
+				str2[2] = "0x0";
+			}
+			else if (fdl2_executed == -1) {
+				if (!save_argv) save_argv = argv;
+				str2[1] = "exec";
+			}
+			else {
+				if (save_argv) { argv = save_argv; save_argv = NULL; }
+				for (i = 1; i < argc; i++) str2[i] = argv[i];
+			}
 			argcount = argc;
 			in_quote = -1;
 		}
