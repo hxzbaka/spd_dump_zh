@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
 	char *temp;
 	char str1[(ARGC_MAX - 1) * ARGV_LEN];
 	char **str2;
-	char execfile[40];
+	char *execfile;
 	char fn_partlist[40];
 	int bootmode = -1, at = 0;
 	int part_count = 0;
@@ -124,6 +124,8 @@ int main(int argc, char **argv) {
 	extern libusb_device* curPort;
 	extern libusb_device** ports;
 #endif
+	execfile = malloc(ARGV_LEN);
+	if (!execfile) ERR_EXIT("malloc failed\n");
 
 	io = spdio_init(0);
 #if USE_LIBUSB
@@ -516,6 +518,7 @@ int main(int argc, char **argv) {
 					send_file(io, fn, addr, end_data, 528);
 					if (exec_addr) {
 						send_file(io, execfile, exec_addr, 0, 528);
+						free(execfile);
 					} else {
 						encode_msg(io, BSL_CMD_EXEC_DATA, NULL, 0);
 						if (send_and_check(io)) exit(1);
@@ -683,10 +686,28 @@ int main(int argc, char **argv) {
 			FILE* fi;
 			if (0 == fdl1_loaded && argcount > 2) {
 				exec_addr = strtoul(str2[2], NULL, 0);
-				memset(execfile, 0, sizeof(execfile));
 				sprintf(execfile, "custom_exec_no_verify_%x.bin", exec_addr);
 				fi = fopen(execfile, "r");
-				if (fi == NULL) { DBG_LOG("%s does not exist\n", execfile);exec_addr = 0; }
+				if (fi == NULL) { DBG_LOG("%s does not exist\n", execfile); exec_addr = 0; }
+				else fclose(fi);
+			}
+			DBG_LOG("current exec_addr is 0x%x\n", exec_addr);
+			argc -= 2; argv += 2;
+
+		} else if (!strcmp(str2[1], "loadexec")) {
+			const char* fn; char* ch; FILE* fi;
+			if (argcount <= 2) { DBG_LOG("loadexec FILE\n"); argc -= 2; argv += 2; continue; }
+			if (0 == fdl1_loaded) {
+				strcpy(execfile, str2[2]);
+
+				if ((ch = strrchr(execfile, '/'))) fn = ch + 1;
+				else if ((ch = strrchr(execfile, '\\'))) fn = ch + 1;
+				else fn = execfile;
+				char straddr[9] = { 0 };
+				ret = sscanf(fn, "custom_exec_no_verify_%[0-9a-fA-F]", straddr);
+				exec_addr = strtoul(straddr, NULL, 16);
+				fi = fopen(execfile, "r");
+				if (fi == NULL) { DBG_LOG("%s does not exist\n", execfile); exec_addr = 0; }
 				else fclose(fi);
 			}
 			DBG_LOG("current exec_addr is 0x%x\n", exec_addr);
