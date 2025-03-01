@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
 	extern libusb_device** ports;
 #endif
 	execfile = malloc(ARGV_LEN);
-	if (!execfile) ERR_EXIT("malloc failed\n");
+	if (!execfile) ERR_EXIT("内存分配失败\n");
 
 	io = spdio_init(0);
 #if USE_LIBUSB
@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
 #endif
 	ret = libusb_init(NULL);
 	if (ret < 0)
-		ERR_EXIT("libusb_init failed: %s\n", libusb_error_name(ret));
+		ERR_EXIT("libusb_init 失败: %s\n", libusb_error_name(ret));
 #else
 	io->handle = createClass();
 	call_Initialize(io->handle);
@@ -147,37 +147,37 @@ int main(int argc, char **argv) {
 	sprintf(fn_partlist, "partition_%lld.xml", (long long)time(NULL));
 	while (argc > 1) {
 		if (!strcmp(argv[1], "--wait")) {
-			if (argc <= 2) ERR_EXIT("bad option\n");
+			if (argc <= 2) ERR_EXIT("错误的选项\n");
 			wait = atoi(argv[2]) * REOPEN_FREQ;
 			argc -= 2; argv += 2;
 		} else if (!strcmp(argv[1], "--verbose")) {
-			if (argc <= 2) ERR_EXIT("bad option\n");
+			if (argc <= 2) ERR_EXIT("错误的选项\n");
 			io->verbose = atoi(argv[2]);
 			argc -= 2; argv += 2;
 		} else if (!strcmp(argv[1], "--stage")) {
-			if (argc <= 2) ERR_EXIT("bad option\n");
+			if (argc <= 2) ERR_EXIT("错误的选项\n");
 			stage = 99;
 			argc -= 2; argv += 2;
 		} else if (strstr(argv[1], "-r")) {
-			if (argc <= 1) ERR_EXIT("bad option\n");
+			if (argc <= 1) ERR_EXIT("错误的选项\n");
 			stage = 99;
 			argc -= 1; argv += 1;
 		} else if (strstr(argv[1], "help") || strstr(argv[1], "-h") || strstr(argv[1], "-?")) {
-			if (argc <= 1) ERR_EXIT("bad option\n");
+			if (argc <= 1) ERR_EXIT("错误的选项\n");
 			print_help();
 			return 0;
 #ifdef __ANDROID__
 		} else if (!strcmp(argv[1], "--usb-fd")) { // Termux spec
-			if (argc <= 2) ERR_EXIT("bad option\n");
+			if (argc <= 2) ERR_EXIT("错误的选项\n");
 			xfd = atoi(argv[argc - 1]);
 			argc -= 2; argv += 1;
 #endif
 		} else if (!strcmp(argv[1], "--kick")) {
-			if (argc <= 1) ERR_EXIT("bad option\n");
+			if (argc <= 1) ERR_EXIT("错误的选项\n");
 			at = 1;
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "--kickto")) {
-			if (argc <= 2) ERR_EXIT("bad option\n");
+			if (argc <= 2) ERR_EXIT("错误的选项\n");
 			bootmode = atoi(argv[2]); at = 0;
 			argc -= 2; argv += 2;
 		} else break;
@@ -251,19 +251,19 @@ int main(int argc, char **argv) {
 	DBG_LOG("尝试转换Termux传输的usb端口fd\n");
 	// handle
 	if (xfd < 0)
-		ERR_EXIT("Example: termux-usb -e \"./spd_dump --usb-fd\" /dev/bus/usb/xxx/xxx\n"
+		ERR_EXIT("例子: termux-usb -e \"./spd_dump --usb-fd\" /dev/bus/usb/xxx/xxx\n"
 			"run on android need provide --usb-fd\n");
 
 	if (libusb_wrap_sys_device(NULL, (intptr_t)xfd, &io->dev_handle))
-		ERR_EXIT("libusb_wrap_sys_device exit unconditionally!\n");
+		ERR_EXIT("libusb_wrap_sys_device 无条件退出！\n");
 
 	device = libusb_get_device(io->dev_handle);
 	if (libusb_get_device_descriptor(device, &desc))
-		ERR_EXIT("libusb_get_device exit unconditionally!");
+		ERR_EXIT("libusb_get_device 无条件退出！");
 
 	DBG_LOG("Vendor ID: %04x\nProduct ID: %04x\n", desc.idVendor, desc.idProduct);
 	if (desc.idVendor != 0x1782 || desc.idProduct != 0x4d00) {
-		ERR_EXIT("It seems spec device not a spd device!\n");
+		ERR_EXIT("spec设备可能不是spd设备！\n");
 	}
 	call_Initialize_libusb(io);
 #else
@@ -279,12 +279,12 @@ int main(int argc, char **argv) {
 			}
 		}
 		if (i >= wait)
-			ERR_EXIT("libusb_open_device failed\n");
+			ERR_EXIT("libusb_open_device 失败\n");
 #else
 		if (io->verbose) DBG_LOG("CurTime: %.1f, CurPort: %d\n", (float)i / REOPEN_FREQ, curPort);
 		if (curPort) break;
 		if (i >= wait)
-			ERR_EXIT("find port failed\n");
+			ERR_EXIT("查找端口失败\n");
 #endif
 		usleep(1000000 / REOPEN_FREQ);
 	}
@@ -292,10 +292,10 @@ int main(int argc, char **argv) {
 	if (!m_bOpened)
 	{
 		if (libusb_open(curPort, &io->dev_handle) >= 0) call_Initialize_libusb(io);
-		else ERR_EXIT("Connection failed\n");
+		else ERR_EXIT("连接失败\n");
 	}
 #else
-	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("Connection failed\n");
+	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("连接失败\n");
 #endif
 #endif
 	io->flags |= FLAGS_TRANSCODE;
@@ -405,7 +405,7 @@ int main(int argc, char **argv) {
 					argcount++;
 					if (argcount == ARGC_MAX) break;
 					str2[argcount] = (char*)malloc(ARGV_LEN);
-					if (!str2[argcount]) ERR_EXIT("malloc failed\n");
+					if (!str2[argcount]) ERR_EXIT("转码失败\n");
 					memset(str2[argcount], 0, ARGV_LEN);
 				}
 				if (temp[0] == '\'') ifs = '\'';
@@ -434,7 +434,7 @@ int main(int argc, char **argv) {
 		{
 			str2[1] = malloc(1);
 			if (str2[1]) str2[1][0] = '\0';
-			else ERR_EXIT("malloc failed\n");
+			else ERR_EXIT("转码失败\n");
 			argcount++;
 		}
 
@@ -565,7 +565,7 @@ int main(int argc, char **argv) {
 				while (1) {
 					send_msg(io);
 					ret = recv_msg(io);
-					if (!ret) ERR_EXIT("timeout reached\n");
+					if (!ret) ERR_EXIT("已超时\n");
 					if (recv_type(io) == BSL_CMD_READ_END) break;
 					pdump = (char*)(io->raw_buf + 4);
 					for (i = 0; i < 512; i++)
@@ -619,13 +619,13 @@ int main(int argc, char **argv) {
 				// Feature phones respond immediately,
 				// but it may take a second for a smartphone to respond.
 				ret = recv_msg_timeout(io, 15000);
-				if (!ret) ERR_EXIT("timeout reached\n");
+				if (!ret) ERR_EXIT("已超时\n");
 				ret = recv_type(io);
 				// Is it always bullshit?
 				if (ret == BSL_REP_INCOMPATIBLE_PARTITION)
 					get_Da_Info(io);
 				else if (ret != BSL_REP_ACK)
-					ERR_EXIT("unexpected response (0x%04x)\n", ret);
+					ERR_EXIT("意外响应 (0x%04x)\n", ret);
 				DBG_LOG("执行 FDL2\n");
 				if (Da_Info.bDisableHDLC) {
 					encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
@@ -1081,7 +1081,7 @@ int main(int argc, char **argv) {
 			encode_msg(io, BSL_CMD_READ_CHIP_UID, NULL, 0);
 			send_msg(io);
 			ret = recv_msg(io);
-			if (!ret) ERR_EXIT("timeout reached\n");
+			if (!ret) ERR_EXIT("已超时\n");
 			if ((ret = recv_type(io)) != BSL_REP_READ_CHIP_UID)
 				{ DBG_LOG("意外响应 (0x%04x)\n", ret); argc -= 1; argv += 1; continue; }
 
