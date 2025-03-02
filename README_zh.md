@@ -87,6 +87,10 @@ spd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec
 
   将文件（`splloader`,`fdl1`,`fdl2`,`sml`,`trustos`,`teecfg`）发送到指定的内存地址。
 
+- `loadfdl FILE`
+- 
+  将文件（`splloader`,`fdl1`,`fdl2`,`sml`,`trustos`,`teecfg`）发送到以文件名的内存地址,如:0x9efffe00.bin
+
 - `exec`
 
   在fdl1阶段执行已发送的文件。通常与`sml`或`fdl2`（也称为uboot/lk）一起使用。
