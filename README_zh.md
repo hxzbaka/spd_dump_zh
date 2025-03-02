@@ -1,8 +1,10 @@
-## Spreadtrum firmware dumper
+## Spreadtrum firmware dumper汉化版
 
 使用官方SPRD U2S Diag驱动程序或LibUSB驱动程序。
 
-### [下载预构建程序(Windows)](https://github.com/TomKing062/spreadtrum_flash/releases)
+### [下载预构建程序(Windows)](https://github.com/hxzbaka/spreadtrum_flash/releases)
+
+### [原仓库](https://github.com/TomKing062/spreadtrum_flash)
 
 ### [原作者(ilyakurdyukov)版本的说明信息](https://github.com/ilyakurdyukov/spreadtrum_flash)
 
