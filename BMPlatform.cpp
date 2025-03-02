@@ -122,7 +122,7 @@ BOOL CBootModeOpr::ConnectChannel(DWORD dwPort)
 
 	//Log(_T("Connect Channel +++"));
 	m_bOpened = m_pChannel->Open(&ca);
-	if (m_bOpened) std::cout << "Successfully connected to port: " << dwPort << std::endl;
+	if (m_bOpened) std::cout << "成功连接端口: " << dwPort << std::endl;
 	//Log(_T("Connect Channel ---"));
 	return m_bOpened;
 }

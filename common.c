@@ -13,7 +13,7 @@ DWORD FindPort(const char* USB_DL)
 	DeviceInfoSet = SetupDiGetClassDevs(&GUID_DEVCLASS_PORTS, NULL, NULL, DIGCF_PRESENT);
 
 	if (DeviceInfoSet == INVALID_HANDLE_VALUE) {
-		DBG_LOG("Failed to get device information set. Error code: %ld\n", GetLastError());
+		DBG_LOG("未能获取设备信息集。错误代码: %ld\n", GetLastError());
 		return 0;
 	}
 
@@ -34,7 +34,7 @@ DWORD FindPort(const char* USB_DL)
 			DWORD portNum = strtoul(portNum_str, NULL, 0);
 			DWORD* temp = (DWORD*)realloc(ports, (count + 2) * sizeof(DWORD));
 			if (temp == NULL) {
-				DBG_LOG("Memory allocation failed.\n");
+				DBG_LOG("内存分配失败。\n");
 				SetupDiDestroyDeviceInfoList(DeviceInfoSet);
 				free(ports);
 				ports = NULL;
@@ -69,7 +69,7 @@ libusb_device* FindPort(void)
 
 	usb_cnt = libusb_get_device_list(NULL, &devs);
 	if (usb_cnt < 0) {
-		DBG_LOG("Get device list error\n");
+		DBG_LOG("获取设备列表错误\n");
 		return NULL;
 	}
 	for (int i = 0; i < usb_cnt; i++) {
@@ -77,14 +77,14 @@ libusb_device* FindPort(void)
 		struct libusb_device_descriptor desc;
 		int r = libusb_get_device_descriptor(dev, &desc);
 		if (r < 0) {
-			DBG_LOG("Failed to get device descriptor\n");
+			DBG_LOG("获取设备描述符失败\n");
 			continue;
 		}
 		if (desc.idVendor == 0x1782 && desc.idProduct == 0x4d00)
 		{
 			libusb_device** temp = (libusb_device**)realloc(ports, (count + 2) * sizeof(libusb_device*));
 			if (temp == NULL) {
-				DBG_LOG("Memory allocation failed.\n");
+				DBG_LOG("内存分配失败。\n");
 				libusb_free_device_list(devs, 1);
 				free(ports);
 				ports = NULL;
@@ -152,12 +152,12 @@ void find_endpoints(libusb_device_handle* dev_handle, int result[2]) {
 	struct libusb_config_descriptor* config;
 	libusb_device* device = libusb_get_device(dev_handle);
 	if (!device)
-		ERR_EXIT("libusb_get_device failed\n");
+		ERR_EXIT("libusb_get_device 失败\n");
 	//if (libusb_get_device_descriptor(device, &desc) < 0)
 	//	ERR_EXIT("libusb_get_device_descriptor failed");
 	err = libusb_get_config_descriptor(device, 0, &config);
 	if (err < 0)
-		ERR_EXIT("libusb_get_config_descriptor failed : %s\n", libusb_error_name(err));
+		ERR_EXIT("libusb_get_config_descriptor 失败 : %s\n", libusb_error_name(err));
 
 	for (k = 0; k < config->bNumInterfaces; k++) {
 		const struct libusb_interface* interface;
@@ -173,12 +173,12 @@ void find_endpoints(libusb_device_handle* dev_handle, int result[2]) {
 				int addr = endpoint->bEndpointAddress;
 				err = 0;
 				if (addr & 0x80) {
-					if (endp_in >= 0) ERR_EXIT("more than one endp_in\n");
+					if (endp_in >= 0) ERR_EXIT("不止一个end_in\n");
 					endp_in = addr;
 					claim = 1;
 				}
 				else {
-					if (endp_out >= 0) ERR_EXIT("more than one endp_out\n");
+					if (endp_out >= 0) ERR_EXIT("不止一个endp_out\n");
 					endp_out = addr;
 					claim = 1;
 				}
@@ -189,20 +189,20 @@ void find_endpoints(libusb_device_handle* dev_handle, int result[2]) {
 #if LIBUSB_DETACH
 			err = libusb_kernel_driver_active(dev_handle, i);
 			if (err > 0) {
-				DBG_LOG("kernel driver is active, trying to detach\n");
+				DBG_LOG("内核驱动程序处于活动状态，正在尝试分离\n");
 				err = libusb_detach_kernel_driver(dev_handle, i);
 				if (err < 0)
-					ERR_EXIT("libusb_detach_kernel_driver failed : %s\n", libusb_error_name(err));
+					ERR_EXIT("libusb_detach_kernel_driver 失败 : %s\n", libusb_error_name(err));
 			}
 #endif
 			err = libusb_claim_interface(dev_handle, i);
 			if (err < 0)
-				ERR_EXIT("libusb_claim_interface failed : %s\n", libusb_error_name(err));
+				ERR_EXIT("libusb_claim_interface 失败 : %s\n", libusb_error_name(err));
 			break;
 		}
 	}
-	if (endp_in < 0) ERR_EXIT("endp_in not found\n");
-	if (endp_out < 0) ERR_EXIT("endp_out not found\n");
+	if (endp_in < 0) ERR_EXIT("未找到end_in\n");
+	if (endp_out < 0) ERR_EXIT("未找到endp_out\n");
 	libusb_free_config_descriptor(config);
 
 	//DBG_LOG("USB endp_in=%02x, endp_out=%02x\n", endp_in, endp_out);
@@ -222,7 +222,7 @@ spdio_t* spdio_init(int flags) {
 
 	p = (uint8_t*)malloc(sizeof(spdio_t) + RECV_BUF_LEN + (4 + 0x10000 + 2) * 3 + 2);
 	io = (spdio_t*)p;
-	if (!p) ERR_EXIT("malloc failed\n");
+	if (!p) ERR_EXIT("内存分配失败\n");
 	memset(io, 0, sizeof(spdio_t));
 	p += sizeof(spdio_t);
 	io->flags = flags;
@@ -321,7 +321,7 @@ void encode_msg(spdio_t* io, int type, const void* data, size_t len) {
 	uint8_t* p, * p0; unsigned chk;
 
 	if (len > 0xffff)
-		ERR_EXIT("message too long\n");
+		ERR_EXIT("信息太长\n");
 
 	if (type == BSL_CMD_CHECK_BAUD) {
 		memset(io->enc_buf, HDLC_HEADER, len);
@@ -358,24 +358,24 @@ void encode_msg(spdio_t* io, int type, const void* data, size_t len) {
 int send_msg(spdio_t* io) {
 	int ret;
 	if (!io->enc_len)
-		ERR_EXIT("empty message\n");
+		ERR_EXIT("空信息\n");
 
 	if (m_bOpened == -1) {
 		spdio_free(io);
-		ERR_EXIT("device removed, exiting...\n");
+		ERR_EXIT("设备已断开, 退出程序...\n");
 	}
 	if (io->verbose >= 2) {
-		DBG_LOG("send (%d):\n", io->enc_len);
+		DBG_LOG("发送 (%d):\n", io->enc_len);
 		print_mem(stderr, io->enc_buf, io->enc_len);
 	}
 	else if (io->verbose >= 1) {
 		if (io->raw_buf[0] == HDLC_HEADER)
-			DBG_LOG("send: check baud\n");
+			DBG_LOG("发送: 检查_波特率\n");
 		else if (io->raw_len >= 4) {
-			DBG_LOG("send: type = 0x%02x, size = %d\n",
+			DBG_LOG("发送: 类型 = 0x%02x, 大小 = %d\n",
 				READ16_BE(io->raw_buf), READ16_BE(io->raw_buf + 2));
 		}
-		else DBG_LOG("send: unknown message\n");
+		else DBG_LOG("发送: 未知信息\n");
 	}
 
 #if USE_LIBUSB
@@ -383,13 +383,13 @@ int send_msg(spdio_t* io) {
 		int err = libusb_bulk_transfer(io->dev_handle,
 			io->endp_out, io->enc_buf, io->enc_len, &ret, io->timeout);
 		if (err < 0)
-			ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+			ERR_EXIT("usb_send 失败 : %s\n", libusb_error_name(err));
 	}
 #else
 	ret = call_Write(io->handle, io->enc_buf, io->enc_len);
 #endif
 	if (ret != io->enc_len)
-		ERR_EXIT("usb_send failed (%d / %d)\n", ret, io->enc_len);
+		ERR_EXIT("usb_send 失败 (%d / %d)\n", ret, io->enc_len);
 
 	return ret;
 }
@@ -406,19 +406,19 @@ int recv_msg_orig(spdio_t* io) {
 		if (pos >= len) {
 			if (m_bOpened == -1) {
 				spdio_free(io);
-				ERR_EXIT("device removed, exiting...\n");
+				ERR_EXIT("设备已断开, 退出程序...\n");
 			}
 #if USE_LIBUSB
 			int err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &len, io->timeout);
 			if (err == LIBUSB_ERROR_NO_DEVICE)
-				ERR_EXIT("connection closed\n");
+				ERR_EXIT("连接关闭\n");
 			else if (err < 0)
-			{ DBG_LOG("usb_recv failed : %s\n", libusb_error_name(err)); return 0; }
+			{ DBG_LOG("usb_recv 失败 : %s\n", libusb_error_name(err)); return 0; }
 #else
 			len = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout);
 #endif
 			if (len < 0)
-			{ DBG_LOG("usb_recv failed, ret = %d\n", len); return 0; }
+			{ DBG_LOG("usb_recv 失败, ret = %d\n", len); return 0; }
 
 			if (io->verbose >= 2) {
 				DBG_LOG("recv (%d):\n", len);
@@ -431,12 +431,12 @@ int recv_msg_orig(spdio_t* io) {
 		if (io->flags & FLAGS_TRANSCODE) {
 			if (esc && a != (HDLC_HEADER ^ 0x20) &&
 				a != (HDLC_ESCAPE ^ 0x20))
-			{ DBG_LOG("unexpected escaped byte (0x%02x)\n", a); return 0; }
+			{ DBG_LOG("意外转义字节 (0x%02x)\n", a); return 0; }
 			if (a == HDLC_HEADER) {
 				if (!head_found) head_found = 1;
 				else if (!nread) continue;
 				else if (nread < plen)
-				{ DBG_LOG("recieved message too short\n"); return 0; }
+				{ DBG_LOG("收到的信息太短\n"); return 0; }
 				else break;
 			}
 			else if (a == HDLC_ESCAPE) {
@@ -445,7 +445,7 @@ int recv_msg_orig(spdio_t* io) {
 			else {
 				if (!head_found) continue;
 				if (nread >= plen)
-				{ DBG_LOG("recieved message too long\n"); return 0; }
+				{ DBG_LOG("收到的消息太长\n"); return 0; }
 				io->raw_buf[nread++] = a ^ esc;
 				esc = 0;
 			}
@@ -457,7 +457,7 @@ int recv_msg_orig(spdio_t* io) {
 			}
 			if (nread == plen) {
 				if (a != HDLC_HEADER)
-				{ DBG_LOG("expected end of message\n"); return 0; }
+				{ DBG_LOG("预期信息结束\n"); return 0; }
 				break;
 			}
 			io->raw_buf[nread++] = a;
@@ -473,10 +473,10 @@ int recv_msg_orig(spdio_t* io) {
 	if (!nread) return 0;
 
 	if (nread < 6)
-	{ DBG_LOG("recieved message too short\n"); return 0; }
+	{ DBG_LOG("收到的信息太短\n"); return 0; }
 
 	if (nread != plen)
-	{ DBG_LOG("bad length (%d, expected %d)\n", nread, plen); return 0; }
+	{ DBG_LOG("长度问题 (%d, expected %d)\n", nread, plen); return 0; }
 
 	a = READ16_BE(io->raw_buf + plen - 2);
 	if (fdl1_loaded == 0 && !(io->flags & FLAGS_CRC16))
@@ -490,7 +490,7 @@ int recv_msg_orig(spdio_t* io) {
 			if (a == chk2) fdl1_loaded = 1;
 			else
 			{
-				DBG_LOG("bad checksum (0x%04x, expected 0x%04x or 0x%04x)\n", a, chk1, chk2);
+				DBG_LOG("校验错误 (0x%04x, expected 0x%04x or 0x%04x)\n", a, chk1, chk2);
 				return 0;
 			}
 		}
@@ -503,13 +503,13 @@ int recv_msg_orig(spdio_t* io) {
 			chk = spd_checksum(0, io->raw_buf, plen - 2, CHK_ORIG);
 		if (a != chk)
 		{
-			DBG_LOG("bad checksum (0x%04x, expected 0x%04x)\n", a, chk);
+			DBG_LOG("校验错误 (0x%04x, expected 0x%04x)\n", a, chk);
 			return 0;
 		}
 	}
 
 	if (io->verbose == 1)
-		DBG_LOG("recv: type = 0x%02x, size = %d\n",
+		DBG_LOG("recv: 类型 = 0x%02x, 大小 = %d\n",
 			READ16_BE(io->raw_buf), READ16_BE(io->raw_buf + 2));
 
 	return nread;
@@ -556,10 +556,10 @@ int send_and_check(spdio_t* io) {
 	int ret;
 	send_msg(io);
 	ret = recv_msg(io);
-	if (!ret) ERR_EXIT("timeout reached\n");
+	if (!ret) ERR_EXIT("已超时\n");
 	ret = recv_type(io);
 	if (ret != BSL_REP_ACK) {
-		DBG_LOG("unexpected response (0x%04x)\n", ret);
+		DBG_LOG("意外响应 (0x%04x)\n", ret);
 		return -1;
 	}
 	return 0;
@@ -567,7 +567,7 @@ int send_and_check(spdio_t* io) {
 
 int check_confirm(const char* name) {
 	char c;
-	DBG_LOG("Answer \"y\" to confirm the \"%s\" command: ", name);
+	DBG_LOG("输入 \"y\" 确认执行 \"%s\" 指令: ", name);
 	fflush(stdout);
 	if (scanf(" %c", &c) != 1) return 0;
 	while (getchar() != '\n');
@@ -598,8 +598,8 @@ void send_file(spdio_t* io, const char* fn,
 	uint32_t data[2], i, n;
 
 	mem = loadfile(fn, &size, 0);
-	if (!mem) ERR_EXIT("loadfile(\"%s\") failed\n", fn);
-	if ((uint64_t)size >> 32) ERR_EXIT("file too big\n");
+	if (!mem) ERR_EXIT("加载文件(\"%s\") 失败\n", fn);
+	if ((uint64_t)size >> 32) ERR_EXIT("文件太大\n");
 
 	WRITE32_BE(data, start_addr);
 	WRITE32_BE(data + 1, size);
@@ -620,7 +620,7 @@ void send_file(spdio_t* io, const char* fn,
 		encode_msg(io, BSL_CMD_END_DATA, NULL, 0);
 		send_and_check(io);
 	}
-	DBG_LOG("SEND %s to 0x%x\n", fn, start_addr);
+	DBG_LOG("发送 %s 到 0x%x\n", fn, start_addr);
 }
 
 unsigned dump_flash(spdio_t* io,
@@ -638,7 +638,7 @@ unsigned dump_flash(spdio_t* io,
 		fo = fopen(fix_fn, "wb");
 	}
 	else fo = fopen(fn, "wb");
-	if (!fo) ERR_EXIT("fopen(dump) failed\n");
+	if (!fo) ERR_EXIT("fopen(转储) 失败\n");
 
 	for (offset = start; offset < start + len; ) {
 		uint32_t data[3];
@@ -652,20 +652,20 @@ unsigned dump_flash(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_FLASH, data, 4 * 3);
 		send_msg(io);
 		ret = recv_msg(io);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		if ((ret = recv_type(io)) != BSL_REP_READ_FLASH) {
-			DBG_LOG("unexpected response (0x%04x)\n", ret);
+			DBG_LOG("意外响应 (0x%04x)\n", ret);
 			break;
 		}
 		nread = READ16_BE(io->raw_buf + 2);
 		if (n < nread)
-			ERR_EXIT("unexpected length\n");
+			ERR_EXIT("意外长度\n");
 		if (fwrite(io->raw_buf + 4, 1, nread, fo) != nread)
-			ERR_EXIT("fwrite(dump) failed\n");
+			ERR_EXIT("fwrite(转储) 失败\n");
 		offset += nread;
 		if (n != nread) break;
 	}
-	DBG_LOG("Read Flash Done: 0x%08x+0x%x, target: 0x%x, read: 0x%x\n", addr, start, len, offset - start);
+	DBG_LOG("回读Flash完成: 0x%08x+0x%x, 目标大小: 0x%x, 读取大小: 0x%x\n", addr, start, len, offset - start);
 	fclose(fo);
 	return offset;
 }
@@ -684,7 +684,7 @@ unsigned dump_mem(spdio_t* io,
 		fo = fopen(fix_fn, "wb");
 	}
 	else fo = fopen(fn, "wb");
-	if (!fo) ERR_EXIT("fopen(dump) failed\n");
+	if (!fo) ERR_EXIT("fopen(转储) 失败\n");
 
 	for (offset = start; offset < start + len; ) {
 		uint32_t data[3];
@@ -698,20 +698,20 @@ unsigned dump_mem(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_FLASH, data, sizeof(data));
 		send_msg(io);
 		ret = recv_msg(io);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		if ((ret = recv_type(io)) != BSL_REP_READ_FLASH) {
-			DBG_LOG("unexpected response (0x%04x)\n", ret);
+			DBG_LOG("意外响应 (0x%04x)\n", ret);
 			break;
 		}
 		nread = READ16_BE(io->raw_buf + 2);
 		if (n < nread)
-			ERR_EXIT("unexpected length\n");
+			ERR_EXIT("意外长度\n");
 		if (fwrite(io->raw_buf + 4, 1, nread, fo) != nread)
-			ERR_EXIT("fwrite(dump) failed\n");
+			ERR_EXIT("fwrite(转储) 失败\n");
 		offset += nread;
 		if (n != nread) break;
 	}
-	DBG_LOG("Read Mem Done: 0x%08x, target: 0x%x, read: 0x%x\n", start, len, offset - start);
+	DBG_LOG("回读Mem完成: 0x%08x, 目标大小: 0x%x, 读取大小: 0x%x\n", start, len, offset - start);
 	fclose(fo);
 	return offset;
 }
@@ -738,7 +738,7 @@ void select_partition(spdio_t* io, const char* name,
 	int ret;
 
 	ret = copy_to_wstr(pkt.name, sizeof(pkt.name) / 2, name);
-	if (ret) ERR_EXIT("name too long\n");
+	if (ret) ERR_EXIT("名字太长\n");
 	n64 = size;
 	WRITE32_LE(&pkt.size, n64);
 	if (mode64) {
@@ -795,13 +795,13 @@ uint64_t dump_partition(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_MIDST, data, 8);
 		send_msg(io);
 		ret = recv_msg(io);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		if (recv_type(io) != BSL_REP_READ_FLASH) return 0;
 		if (*(uint32_t*)(io->raw_buf + 4) == 0x00004e56)
 		{
 			if (dot != NULL) len = *(uint32_t*)(io->raw_buf + 8);
 			else len = 0x200 + *(uint32_t*)(io->raw_buf + 8);
-			DBG_LOG("nv length: 0x%llx\n", (long long)len);
+			DBG_LOG("nv长度: 0x%llx\n", (long long)len);
 		}
 		encode_msg(io, BSL_CMD_READ_END, NULL, 0);
 		send_and_check(io);
@@ -819,7 +819,7 @@ uint64_t dump_partition(spdio_t* io,
 		fo = fopen(fix_fn, "wb");
 	}
 	else fo = fopen(fn, "wb");
-	if (!fo) ERR_EXIT("fopen(dump) failed\n");
+	if (!fo) ERR_EXIT("fopen(转储) 失败\n");
 
 	for (offset = start; (n64 = start + len - offset); ) {
 		uint32_t data[3];
@@ -833,16 +833,16 @@ uint64_t dump_partition(spdio_t* io,
 		encode_msg(io, BSL_CMD_READ_MIDST, data, mode64 ? 12 : 8);
 		send_msg(io);
 		ret = recv_msg(io);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		if ((ret = recv_type(io)) != BSL_REP_READ_FLASH) {
-			DBG_LOG("unexpected response (0x%04x)\n", ret);
+			DBG_LOG("意外响应 (0x%04x)\n", ret);
 			break;
 		}
 		nread = READ16_BE(io->raw_buf + 2);
 		if (n < nread)
-			ERR_EXIT("unexpected length\n");
+			ERR_EXIT("意外长度\n");
 		if (fwrite(io->raw_buf + 4, 1, nread, fo) != nread)
-			ERR_EXIT("fwrite(dump) failed\n");
+			ERR_EXIT("fwrite(转储) 失败\n");
 		print_progress_bar((offset + nread - start) / (float)len);
 		offset += nread;
 		if (n != nread) break;
@@ -852,7 +852,7 @@ uint64_t dump_partition(spdio_t* io,
 			if (saved_size >= fblk_size) { usleep(1000000); saved_size = 0; }
 		}
 	}
-	DBG_LOG("Read Part Done: %s+0x%llx, target: 0x%llx, read: 0x%llx\n",
+	DBG_LOG("回读分区完成: %s+0x%llx, 目标大小: 0x%llx, 读取大小: 0x%llx\n",
 		name, (long long)start, (long long)len,
 		(long long)(offset - start));
 	fclose(fo);
@@ -875,11 +875,11 @@ uint64_t read_pactime(spdio_t* io) {
 	encode_msg(io, BSL_CMD_READ_MIDST, data, sizeof(data));
 	send_msg(io);
 	ret = recv_msg(io);
-	if (!ret) ERR_EXIT("timeout reached\n");
+	if (!ret) ERR_EXIT("已超时\n");
 	if ((ret = recv_type(io)) != BSL_REP_READ_FLASH)
-		ERR_EXIT("unexpected response (0x%04x)\n", ret);
+		ERR_EXIT("意外响应 (0x%04x)\n", ret);
 	n = READ16_BE(io->raw_buf + 2);
-	if (n != len) ERR_EXIT("unexpected length\n");
+	if (n != len) ERR_EXIT("意外长度\n");
 
 	time = (uint32_t)READ32_LE(io->raw_buf + 4);
 	time |= (uint64_t)READ32_LE(io->raw_buf + 8) << 32;
@@ -898,7 +898,7 @@ int scan_xml_partitions(const char* fn, uint8_t* buf, size_t buf_size) {
 	char* src, * p, name[36]; size_t fsize = 0;
 	int part1_len = strlen(part1), found = 0, stage = 0;
 	src = (char*)loadfile(fn, &fsize, 1);
-	if (!src) ERR_EXIT("loadfile failed\n");
+	if (!src) ERR_EXIT("加载文件失败\n");
 	src[fsize] = 0;
 	p = src;
 	for (;;) {
@@ -907,21 +907,21 @@ int scan_xml_partitions(const char* fn, uint8_t* buf, size_t buf_size) {
 		if (a != '<') {
 			if (!a) break;
 			if (stage != 1) continue;
-			ERR_EXIT("xml: unexpected symbol\n");
+			ERR_EXIT("xml: 意外符号\n");
 		}
 		if (!memcmp(p, "!--", 3)) {
 			p = strstr(p + 3, "--");
 			if (!p || !((p[-1] - '!') | (p[-2] - '<')) || p[2] != '>')
-				ERR_EXIT("xml: unexpected syntax\n");
+				ERR_EXIT("xml: 意外语法\n");
 			p += 3;
 			continue;
 		}
 		if (stage != 1) {
 			stage += !memcmp(p, part1, part1_len);
 			if (stage > 2)
-				ERR_EXIT("xml: more than one partition lists\n");
+				ERR_EXIT("xml: 多个分区表\n");
 			p = strchr(p, '>');
-			if (!p) ERR_EXIT("xml: unexpected syntax\n");
+			if (!p) ERR_EXIT("xml: 意外语法\n");
 			p++;
 			continue;
 		}
@@ -932,21 +932,21 @@ int scan_xml_partitions(const char* fn, uint8_t* buf, size_t buf_size) {
 		}
 		i = sscanf(p, "Partition id=\"%35[^\"]\" size=\"%lli\"/%n%c", name, &size, &n, &c);
 		if (i != 3 || c != '>')
-			ERR_EXIT("xml: unexpected syntax\n");
+			ERR_EXIT("xml: 意外语法\n");
 		p += n + 1;
 		if (buf_size < 0x4c)
-			ERR_EXIT("xml: too many partitions\n");
+			ERR_EXIT("xml: 分区太多\n");
 		buf_size -= 0x4c;
 		memset(buf, 0, 36 * 2);
 		for (i = 0; (a = name[i]); i++) buf[i * 2] = a;
-		if (!i) ERR_EXIT("empty partition name\n");
+		if (!i) ERR_EXIT("空分区名称\n");
 		WRITE32_LE(buf + 0x48, size);
 		buf += 0x4c;
 		DBG_LOG("[%d] %s, %d\n", found, name, (int)size);
 		found++;
 	}
-	if (p - 1 != src + fsize) ERR_EXIT("xml: zero byte");
-	if (stage != 2) ERR_EXIT("xml: unexpected syntax\n");
+	if (p - 1 != src + fsize) ERR_EXIT("xml: 零字节");
+	if (stage != 2) ERR_EXIT("xml: 意外语法\n");
 	free(src);
 	return found;
 }
@@ -1003,11 +1003,11 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 	fseek(fp, (long)header.partition_entry_lba * real_SECTOR_SIZE, SEEK_SET);
 	bytes_read = fread(entries, 1, header.number_of_partition_entries * sizeof(efi_entry), fp);
 	if (bytes_read != (int)(header.number_of_partition_entries * sizeof(efi_entry)))
-		DBG_LOG("only read %d/%d\n", bytes_read, (int)(header.number_of_partition_entries * sizeof(efi_entry)));
+		DBG_LOG("只读 %d/%d\n", bytes_read, (int)(header.number_of_partition_entries * sizeof(efi_entry)));
 	FILE* fo = NULL;
 	if (strcmp(fn_xml, "-")) {
 		fo = fopen(fn_xml, "wb");
-		if (!fo) ERR_EXIT("fopen failed\n");
+		if (!fo) ERR_EXIT("打开文件失败\n");
 		fprintf(fo, "<Partitions>\n");
 	}
 	int n = 0;
@@ -1042,8 +1042,8 @@ int gpt_info(partition_t* ptable, const char* fn_xml, int* part_count_ptr) {
 	free(entries);
 	fclose(fp);
 	*part_count_ptr = n;
-	DBG_LOG("standard gpt table saved to pgpt.bin\n");
-	DBG_LOG("skip saving sprd partition list packet\n");
+	DBG_LOG("标准gpt表保存到pgpt.bin\n");
+	DBG_LOG("跳过保存sprd分区列表数据包\n");
 	return 0;
 }
 
@@ -1055,7 +1055,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 	partition_t* ptable = malloc(128 * sizeof(partition_t));
 	if (ptable == NULL) return NULL;
 	
-	DBG_LOG("Reading Partition List\n");
+	DBG_LOG("正在读取分区列表\n");
 	if (selected_ab < 0) select_ab(io);
 	int verbose = io->verbose;
 	io->verbose = 0;
@@ -1068,17 +1068,17 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		encode_msg(io, BSL_CMD_READ_PARTITION, NULL, 0);
 		send_msg(io);
 		ret = recv_msg(io);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		ret = recv_type(io);
 		if (ret != BSL_REP_READ_PARTITION){
-			DBG_LOG("unexpected response (0x%04x)\n", ret);
+			DBG_LOG("意外响应 (0x%04x)\n", ret);
 			gpt_failed = -1;
 			free(ptable);
 			return NULL;
 		}
 		size = READ16_BE(io->raw_buf + 2);
 		if (size % 0x4c) {
-			DBG_LOG("not divisible by struct size (0x%04lx)\n", size);
+			DBG_LOG("不能被结构体大小整除 (0x%04lx)\n", size);
 			gpt_failed = -1;
 			free(ptable);
 			return NULL;
@@ -1090,17 +1090,17 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 			fpkt = fopen(fix_fn, "wb");
 		}
 		else fpkt = fopen("sprdpart.bin", "wb");
-		if (!fpkt) ERR_EXIT("fopen failed\n");
+		if (!fpkt) ERR_EXIT("打开文件失败\n");
 		fwrite(io->raw_buf + 4, 1, size, fpkt);
 		fclose(fpkt);
 		n = size / 0x4c;
 		if (strcmp(fn, "-")) {
 			fo = fopen(fn, "wb");
-			if (!fo) ERR_EXIT("fopen failed\n");
+			if (!fo) ERR_EXIT("打开文件失败\n");
 			fprintf(fo, "<Partitions>\n");
 		}
 		int divisor = 10;
-		DBG_LOG("detecting sector size\n");
+		DBG_LOG("检测扇区大小\n");
 		p = io->raw_buf + 4;
 		for (i = 0; i < n; i++, p += 0x4c) {
 			size = READ32_LE(p + 0x48);
@@ -1112,7 +1112,7 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 		DBG_LOG("  0 %36s     256KB\n", "splloader");
 		for (i = 0; i < n; i++, p += 0x4c) {
 			ret = copy_from_wstr((*(ptable + i)).name, 36, (uint16_t*)p);
-			if (ret) ERR_EXIT("bad partition name\n");
+			if (ret) ERR_EXIT("分区名称错误\n");
 			size = READ32_LE(p + 0x48);
 			(*(ptable + i)).size = (size << 20) >> divisor;
 			DBG_LOG("%3d %36s %7lldMB\n", i + 1, (*(ptable + i)).name, ((*(ptable + i)).size >> 20));
@@ -1131,15 +1131,15 @@ partition_t* partition_list(spdio_t* io, const char* fn, int* part_count_ptr) {
 			fclose(fo);
 		}
 		*part_count_ptr = n;
-		DBG_LOG("unable to get standard gpt table\n");
-		DBG_LOG("sprd partition list packet saved to sprdpart.bin\n");
+		DBG_LOG("无法获取标准gpt表\n");
+		DBG_LOG("sprd分区表数据包已保存到sprdpart.bin\n");
 		gpt_failed = 0;
 	}
 	if (*part_count_ptr) {
-		if (strcmp(fn, "-")) DBG_LOG("partition list saved to %s\n", fn);
-		DBG_LOG("Total number of partitions: %d\n", *part_count_ptr);
-		if (Da_Info.dwStorageType == 0x102) DBG_LOG("Storage is emmc\n");
-		else if (Da_Info.dwStorageType == 0x103) DBG_LOG("Storage is ufs\n");
+		if (strcmp(fn, "-")) DBG_LOG("分区表已保存到 %s\n", fn);
+		DBG_LOG("分区总数: %d\n", *part_count_ptr);
+		if (Da_Info.dwStorageType == 0x102) DBG_LOG("储存是emmc\n");
+		else if (Da_Info.dwStorageType == 0x103) DBG_LOG("储存是ufs\n");
 		return ptable;
 	}
 	else {
@@ -1160,7 +1160,7 @@ void repartition(spdio_t* io, const char* fn) {
 void erase_partition(spdio_t* io, const char* name) {
 	if (!memcmp(name, "userdata", 8)) select_partition(io, name, 1048576, 0, BSL_CMD_ERASE_FLASH);
 	else select_partition(io, name, 0, 0, BSL_CMD_ERASE_FLASH);
-	if (!send_and_check(io)) DBG_LOG("Erase Part Done: %s\n", name);
+	if (!send_and_check(io)) DBG_LOG("擦除分区完成: %s\n", name);
 }
 
 void load_partition(spdio_t* io, const char* name,
@@ -1173,16 +1173,16 @@ void load_partition(spdio_t* io, const char* name,
 	if (!strcmp(name, "calinv")) { return; } //skip calinv
 
 	fi = fopen(fn, "rb");
-	if (!fi) ERR_EXIT("fopen(load) failed\n");
+	if (!fi) ERR_EXIT("打开文件(load) 失败\n");
 
 	uint8_t header[4], is_simg = 0;
 	if (fread(header, 1, 4, fi) != 4)
-		ERR_EXIT("fread(load) failed\n");
+		ERR_EXIT("读文件(load) 失败\n");
 	if (0xED26FF3A == *(uint32_t*)header) is_simg = 1;
 	fseeko(fi, 0, SEEK_END);
 	len = ftello(fi);
 	fseek(fi, 0, SEEK_SET);
-	DBG_LOG("file size : 0x%llx\n", (long long)len);
+	DBG_LOG("文件大小 : 0x%llx\n", (long long)len);
 
 	mode64 = len >> 32;
 	select_partition(io, name, len, mode64, BSL_CMD_START_DATA);
@@ -1194,35 +1194,35 @@ void load_partition(spdio_t* io, const char* name,
 		if (send_and_check(io)) { Da_Info.bSupportRawData = 0; goto fallback_load; }
 		step = Da_Info.dwFlushSize << 10;
 		uint8_t* rawbuf = (uint8_t*)malloc(step + 1);
-		if (!rawbuf) ERR_EXIT("malloc failed\n");
+		if (!rawbuf) ERR_EXIT("内存分配失败\n");
 
 		for (offset = 0; (n64 = len - offset); offset += n) {
 			n = (unsigned)(n64 > step ? step : n64);
 			if (m_bOpened == -1) {
 				spdio_free(io);
-				ERR_EXIT("device removed, exiting...\n");
+				ERR_EXIT("设备已断开, 退出程序...\n");
 			}
 			if (fread(rawbuf, 1, n, fi) != n)
-				ERR_EXIT("fread(load) failed\n");
+				ERR_EXIT("读文件(load) 失败\n");
 //#if USE_LIBUSB
 //			int err = libusb_bulk_transfer(io->dev_handle,
 //				io->endp_out, rawbuf, n, &ret, io->timeout);
 //			if (err < 0)
-//				ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+//				ERR_EXIT("usb_send 失败 : %s\n", libusb_error_name(err));
 //#else
 			ret = call_Write(io->handle, rawbuf, n);
 //#endif
-			if (io->verbose >= 1) DBG_LOG("send (%d)\n", n);
+			if (io->verbose >= 1) DBG_LOG("发送 (%d)\n", n);
 			if (ret != (int)n)
-				ERR_EXIT("usb_send failed (%d / %d)\n", ret, n);
+				ERR_EXIT("usb_send 失败 (%d / %d)\n", ret, n);
 			if (is_simg) ret = recv_msg_timeout(io, 100000);
 			else ret = recv_msg_timeout(io, 15000);
 			if (!ret) {
-				if(n == n64) ERR_EXIT("signature verification of \"%s\" failed or timeout reached\n", name);
-				else ERR_EXIT("timeout reached\n"); 
+				if(n == n64) ERR_EXIT("分区 \"%s\" 的签名验证失败或已超时\n", name);
+				else ERR_EXIT("已超时\n"); 
 			}
 			if ((ret = recv_type(io)) != BSL_REP_ACK) {
-				DBG_LOG("unexpected response (0x%04x)\n", ret);
+				DBG_LOG("意外响应 (0x%04x)\n", ret);
 				break;
 			}
 			print_progress_bar((offset + n) / (float)len);
@@ -1234,17 +1234,17 @@ void load_partition(spdio_t* io, const char* name,
 		for (offset = 0; (n64 = len - offset); offset += n) {
 			n = (unsigned)(n64 > step ? step : n64);
 			if (fread(io->temp_buf, 1, n, fi) != n)
-				ERR_EXIT("fread(load) failed\n");
+				ERR_EXIT("打开文件(load) 失败\n");
 			encode_msg(io, BSL_CMD_MIDST_DATA, io->temp_buf, n);
 			send_msg(io);
 			if (is_simg) ret = recv_msg_timeout(io, 100000);
 			else ret = recv_msg_timeout(io, 15000);
 			if (!ret) {
-				if (n == n64) ERR_EXIT("signature verification of \"%s\" failed or timeout reached\n", name);
-				else ERR_EXIT("timeout reached\n");
+				if (n == n64) ERR_EXIT("分区 \"%s\" 的签名验证失败或已超时\n", name);
+				else ERR_EXIT("已超时\n");
 			}
 			if ((ret = recv_type(io)) != BSL_REP_ACK) {
-				DBG_LOG("unexpected response (0x%04x)\n", ret);
+				DBG_LOG("意外响应 (0x%04x)\n", ret);
 				break;
 			}
 			print_progress_bar((offset + n) / (float)len);
@@ -1254,7 +1254,7 @@ void load_partition(spdio_t* io, const char* name,
 #endif
 	fclose(fi);
 	encode_msg(io, BSL_CMD_END_DATA, NULL, 0);
-	if(!send_and_check(io)) DBG_LOG("Write Part Done: %s, target: 0x%llx, written: 0x%llx\n",
+	if(!send_and_check(io)) DBG_LOG("刷写分区完成: %s, 目标大小: 0x%llx, 写入大小: 0x%llx\n",
 		name, (long long)len, (long long)offset);
 }
 
@@ -1310,11 +1310,11 @@ void load_nv_partition(spdio_t* io, const char* name,
 	uint32_t cs = 0;
 
 	mem = loadfile(fn, &len, 0);
-	if (!mem) ERR_EXIT("loadfile(\"%s\") failed\n", fn);
+	if (!mem) ERR_EXIT("加载文件(\"%s\") 失败\n", fn);
 
 	size_t memOffset = 0;
 	uint8_t* output = (uint8_t*)malloc(len);
-	if (!output) ERR_EXIT("malloc failed\n");
+	if (!output) ERR_EXIT("内存分配失败\n");
 	if (*(uint32_t*)mem == 0x4e56) { memOffset = 0x200; len -= 0x200; }
 	if (strstr(name, "fix"))
 	{
@@ -1344,14 +1344,14 @@ void load_nv_partition(spdio_t* io, const char* name,
 	free(mem);
 	mem = output;
 	for (offset = 0; offset < len; offset++) cs += mem[offset];
-	DBG_LOG("file size : 0x%zx\n", len);
+	DBG_LOG("文件大小 : 0x%zx\n", len);
 
 	struct {
 		uint16_t name[36];
 		uint32_t size, cs;
 	} pkt = { 0 };
 	ret = copy_to_wstr(pkt.name, sizeof(pkt.name) / 2, name);
-	if (ret) ERR_EXIT("name too long\n");
+	if (ret) ERR_EXIT("名字太长\n");
 	WRITE32_LE(&pkt.size, len);
 	WRITE32_LE(&pkt.cs, cs);
 	encode_msg(io, BSL_CMD_START_DATA, &pkt, sizeof(pkt));
@@ -1363,15 +1363,15 @@ void load_nv_partition(spdio_t* io, const char* name,
 		encode_msg(io, BSL_CMD_MIDST_DATA, io->temp_buf, n);
 		send_msg(io);
 		ret = recv_msg_timeout(io, 15000);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		if ((ret = recv_type(io)) != BSL_REP_ACK) {
-			DBG_LOG("unexpected response (0x%04x)\n", ret);
+			DBG_LOG("意外响应 (0x%04x)\n", ret);
 			break;
 		}
 	}
 	free(mem);
 	encode_msg(io, BSL_CMD_END_DATA, NULL, 0);
-	if(!send_and_check(io)) DBG_LOG("Write NV_Part Done: %s, target: 0x%llx, written: 0x%llx\n",
+	if(!send_and_check(io)) DBG_LOG("刷写NV分区完成: %s, 目标大小: 0x%llx, 写入大小: 0x%llx\n",
 		name, (long long)len, (long long)offset);
 }
 
@@ -1388,10 +1388,10 @@ void find_partition_size_new(spdio_t* io, const char* name, unsigned long long *
 	encode_msg(io, BSL_CMD_READ_MIDST, data, 8);
 	send_msg(io);
 	ret = recv_msg(io);
-	if (!ret) ERR_EXIT("timeout reached\n");
+	if (!ret) ERR_EXIT("已超时\n");
 	if (recv_type(io) == BSL_REP_READ_FLASH) {
 		ret = sscanf((char *)(io->raw_buf + 4), "size:%*[^:]: 0x%llx", offset_ptr);
-		DBG_LOG("partition_size_device: %s, 0x%llx\n", name, *offset_ptr);
+		DBG_LOG("分区大小_设备: %s, 0x%llx\n", name, *offset_ptr);
 	}
 	encode_msg(io, BSL_CMD_READ_END, NULL, 0);
 	send_and_check(io);
@@ -1432,7 +1432,7 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 		encode_msg(io, BSL_CMD_READ_MIDST, data, sizeof(data));
 		send_msg(io);
 		ret = recv_msg(io);
-		if (!ret) ERR_EXIT("timeout reached\n");
+		if (!ret) ERR_EXIT("已超时\n");
 		ret = recv_type(io);
 		if (incrementing) {
 			if (ret != BSL_REP_READ_FLASH) {
@@ -1449,7 +1449,7 @@ uint64_t find_partition_size(spdio_t* io, const char* name) {
 			i--;
 		}
 	}
-	DBG_LOG("partition_size_pc: %s, 0x%llx\n", name, offset);
+	DBG_LOG("分区大小_设备返回: %s, 0x%llx\n", name, offset);
 	encode_msg(io, BSL_CMD_READ_END, NULL, 0);
 	send_and_check(io);
 	return offset;
@@ -1476,7 +1476,7 @@ int check_partition(spdio_t* io, const char* name) {
 	encode_msg(io, BSL_CMD_READ_MIDST, data, 8);
 	send_msg(io);
 	ret = recv_msg(io);
-	if (!ret) ERR_EXIT("timeout reached\n");
+	if (!ret) ERR_EXIT("已超时\n");
 	if (recv_type(io) == BSL_REP_READ_FLASH) ret = 1;
 	else ret = 0;
 	encode_msg(io, BSL_CMD_READ_END, NULL, 0);
@@ -1493,13 +1493,13 @@ uint64_t str_to_size(const char* str) {
 		if (suffix == 'k') shl = 10;
 		else if (suffix == 'm') shl = 20;
 		else if (suffix == 'g') shl = 30;
-		else ERR_EXIT("unknown size suffix\n");
+		else ERR_EXIT("未知大小后缀\n");
 	}
 	if (shl) {
 		int64_t tmp = n;
 		tmp >>= 63 - shl;
 		if (tmp && ~tmp)
-			ERR_EXIT("size overflow on multiply\n");
+			ERR_EXIT("乘法时大小溢出\n");
 	}
 	return n << shl;
 }
@@ -1519,7 +1519,7 @@ uint64_t str_to_size_ubi(const char* str, int* nand_info) {
 			}
 			else
 			{
-				DBG_LOG("only support mb as unit, will not treat kb/gb as ubi size\n");
+				DBG_LOG("仅支持mb为单位，不会将kb/gb视为ubi大小\n");
 				return str_to_size(&str[3]);
 			}
 		}
@@ -1537,7 +1537,7 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 
 	if (!memcmp(fn, "ubi", 3)) ubi = 1;
 	src = (char*)loadfile(fn, &size, 1);
-	if (!src) ERR_EXIT("loadfile failed\n");
+	if (!src) ERR_EXIT("加载文件失败\n");
 	src[size] = 0;
 	p = src;
 
@@ -1550,13 +1550,13 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		if (a != '<') {
 			if (!a) break;
 			if (stage != 1) continue;
-			ERR_EXIT("xml: unexpected symbol\n");
+			ERR_EXIT("xml: 意外符合\n");
 		}
 
 		if (!memcmp(p, "!--", 3)) {
 			p = strstr(p + 3, "--");
 			if (!p || !((p[-1] - '!') | (p[-2] - '<')) || p[2] != '>')
-				ERR_EXIT("xml: unexpected syntax\n");
+				ERR_EXIT("xml: 意外语法\n");
 			p += 3;
 			continue;
 		}
@@ -1564,9 +1564,9 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		if (stage != 1) {
 			stage += !memcmp(p, part1, part1_len);
 			if (stage > 2)
-				ERR_EXIT("xml: more than one partition lists\n");
+				ERR_EXIT("xml: 多个分区表\n");
 			p = strchr(p, '>');
-			if (!p) ERR_EXIT("xml: unexpected syntax\n");
+			if (!p) ERR_EXIT("xml: 意外语法\n");
 			p++;
 			continue;
 		}
@@ -1579,18 +1579,18 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 
 		i = sscanf(p, "Partition id=\"%35[^\"]\" size=\"%lli\"/%n%c", partitions[found].name, &partitions[found].size, &n, &c);
 		if (i != 3 || c != '>')
-			ERR_EXIT("xml: unexpected syntax\n");
+			ERR_EXIT("xml: 意外语法\n");
 		p += n + 1;
 		found++;
 		if (found >= 128) break;
 	}
-	if (p - 1 != src + size) ERR_EXIT("xml: zero byte");
-	if (stage != 2) ERR_EXIT("xml: unexpected syntax\n");
+	if (p - 1 != src + size) ERR_EXIT("xml: 零字节");
+	if (stage != 2) ERR_EXIT("xml: 意外语法\n");
 
 	int verbose = io->verbose;
 	if (selected_ab < 0) select_ab(io);
 	for (int i = 0; i < found; i++) {
-		DBG_LOG("Partition %d: name=%s, size=%llim\n", i + 1, partitions[i].name, partitions[i].size);
+		DBG_LOG("分区 %d: 名称=%s, 大小=%llim\n", i + 1, partitions[i].name, partitions[i].size);
 		if (!memcmp(partitions[i].name, "userdata", 8)) continue;
 
 		char* pn = partitions[i].name;
@@ -1605,7 +1605,7 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 				pn = name_ab;
 			}
 			if (!realsize) {
-				DBG_LOG("part not exist\n");
+				DBG_LOG("分区不存在\n");
 				io->verbose = verbose;
 				continue;
 			}
@@ -1626,7 +1626,7 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 	}
 
 	if (savepath[0]) {
-		DBG_LOG("saving dump list\n");
+		DBG_LOG("保存转储列表\n");
 		char fix_fn[1024];
 		char* ch;
 		if ((ch = strrchr(fn, '/'))) sprintf(fix_fn, "%s/%s", savepath, ch + 1);
@@ -1634,7 +1634,7 @@ void dump_partitions(spdio_t* io, const char* fn, int* nand_info, int blk_size) 
 		else sprintf(fix_fn, "%s/%s", savepath, fn);
 		FILE* fo = fopen(fix_fn, "wb");
 		if (fo) { fwrite(src, 1, size, fo); fclose(fo); }
-		else DBG_LOG("create dump list failed, skipping.\n");
+		else DBG_LOG("创建转储列表失败，跳过。\n");
 	}
 	free(src);
 	free(partitions);
@@ -1659,7 +1659,7 @@ void load_partitions(spdio_t* io, const char* path, int blk_size) {
 	HANDLE hFind = FindFirstFileA(searchPath, &findData);
 
 	if (hFind == INVALID_HANDLE_VALUE) {
-		DBG_LOG("Error opening directory.\n");
+		DBG_LOG("打开目录时出错。\n");
 		return;
 	}
 	for (fn = findData.cFileName; FindNextFileA(hFind, &findData); fn = findData.cFileName)
@@ -1670,7 +1670,7 @@ void load_partitions(spdio_t* io, const char* path, int blk_size) {
 	struct dirent* entry;
 
 	if ((dir = opendir(path)) == NULL || (entry = readdir(dir)) == NULL) {
-		DBG_LOG("Error opening directory.\n");
+		DBG_LOG("打开目录时出错。\n");
 		return;
 	}
 	for (fn = entry->d_name; (entry = readdir(dir)); fn = entry->d_name)
@@ -1720,7 +1720,7 @@ void load_partitions(spdio_t* io, const char* path, int blk_size) {
 					fn = name_ab;
 				}
 				if (!realsize) {
-					DBG_LOG("part not exist\n");
+					DBG_LOG("分区不存在\n");
 					io->verbose = verbose;
 					continue;
 				}
@@ -1746,7 +1746,7 @@ void load_partitions(spdio_t* io, const char* path, int blk_size) {
 					fn = name_ab;
 				}
 				if (!realsize) {
-					DBG_LOG("part not exist\n");
+					DBG_LOG("分区不存在\n");
 					io->verbose = verbose;
 					continue;
 				}
@@ -1782,7 +1782,7 @@ void get_Da_Info(spdio_t* io)
 		}
 		else memcpy(&Da_Info, io->raw_buf + 4, io->raw_len - 6);
 	}
-	DBG_LOG("FDL2: incompatible partition\n");
+	DBG_LOG("FDL2: 不兼容的分区\n");
 }
 
 int ab_compare_slots(const slot_metadata* a, const slot_metadata* b)
@@ -1808,7 +1808,7 @@ void select_ab(spdio_t* io)
 	encode_msg(io, BSL_CMD_READ_MIDST, data, 8);
 	send_msg(io);
 	ret = recv_msg(io);
-	if (!ret) ERR_EXIT("timeout reached\n");
+	if (!ret) ERR_EXIT("已超时\n");
 	if (recv_type(io) == BSL_REP_READ_FLASH) abc = (bootloader_control*)(io->raw_buf + 4);
 	encode_msg(io, BSL_CMD_READ_END, NULL, 0);
 	send_and_check(io);
@@ -1834,20 +1834,20 @@ void dm_disable(spdio_t* io, int blk_size)
 		sprintf(dfile, "%s.bin", list[i]);
 		FILE* vb = fopen(dfile, "r");
 		if (!vb) {
-			DBG_LOG("File %s does not exist, skipping.\n", dfile);
+			DBG_LOG("文件 %s 不存在, 跳过。\n", dfile);
 			continue;
 		}
 		fclose(vb);
 		vb = fopen(dfile, "rb+");
-		if (!vb) ERR_EXIT("fopen %s failed\n", dfile);
+		if (!vb) ERR_EXIT("打开文件 %s 失败\n", dfile);
 		char header[4];
-		if (fread(header, 1, 4, vb) != 4) ERR_EXIT("Failed to read header\n");
+		if (fread(header, 1, 4, vb) != 4) ERR_EXIT("读取标头失败\n");
 		if (memcmp(header, "DHTB", 4)) {
-			if (fseek(vb, 0x7B, SEEK_SET) != 0) ERR_EXIT("fseek failed\n");
+			if (fseek(vb, 0x7B, SEEK_SET) != 0) ERR_EXIT("fseek 失败\n");
 			char ch = '\1';
-			if (fwrite(&ch, 1, 1, vb) != 1) ERR_EXIT("fwrite failed\n");
+			if (fwrite(&ch, 1, 1, vb) != 1) ERR_EXIT("fwrite 失败\n");
 		}
-		else { DBG_LOG("unsupported\n"); break; }
+		else { DBG_LOG("不支持\n"); break; }
 		fclose(vb);
 
 		load_partition(io, list[i], dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
@@ -1874,20 +1874,20 @@ void dm_enable(spdio_t* io, int blk_size)
 		sprintf(dfile, "%s.bin", list[i]);
 		FILE* vb = fopen(dfile, "r");
 		if (!vb) {
-			DBG_LOG("File %s does not exist, skipping.\n", dfile);
+			DBG_LOG("文件 %s 不存在, 跳过。\n", dfile);
 			continue;
 		}
 		fclose(vb);
 		vb = fopen(dfile, "rb+");
-		if (!vb) ERR_EXIT("fopen %s failed\n", dfile);
+		if (!vb) ERR_EXIT("打开文件 %s 失败\n", dfile);
 		char header[4];
-		if (fread(header, 1, 4, vb) != 4) ERR_EXIT("Failed to read header\n");
+		if (fread(header, 1, 4, vb) != 4) ERR_EXIT("读取标头失败\n");
 		if (memcmp(header, "DHTB", 4)) {
-			if (fseek(vb, 0x7B, SEEK_SET) != 0) ERR_EXIT("fseek failed\n");
+			if (fseek(vb, 0x7B, SEEK_SET) != 0) ERR_EXIT("fseek 失败\n");
 			char ch = '\0';
-			if (fwrite(&ch, 1, 1, vb) != 1) ERR_EXIT("fwrite failed\n");
+			if (fwrite(&ch, 1, 1, vb) != 1) ERR_EXIT("fwrite 失败\n");
 		}
-		else { DBG_LOG("unsupported\n"); break; }
+		else { DBG_LOG("不支持\n"); break; }
 		fclose(vb);
 
 		load_partition(io, list[i], dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
@@ -2013,32 +2013,33 @@ DWORD WINAPI ThrdFunc(LPVOID lpParam)
 #if !USE_LIBUSB
 void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 {
-	if (bootmode >= 0x80) ERR_EXIT("mode not exist\n");
+	if (bootmode >= 0x80) ERR_EXIT("模式不存在\n");
 	DWORD bytes_written, bytes_read;
 	int done = 0;
 
 	while (!done)
 	{
-		DBG_LOG("Waiting for boot_diag/cali_diag/dl_diag connection (%ds)\n", ms / 1000);
+		DBG_LOG("使用kick时可能需要手动重连(dl_diag)");
+		DBG_LOG("正在等待 boot_diag/cali_diag/dl_diag 连接 (%ds)\n", ms / 1000);
 		for (int i = 0; ; i++) {
 			if (curPort) break;
-			if (100 * i >= ms) ERR_EXIT("find port failed\n");
+			if (100 * i >= ms) ERR_EXIT("查找端口失败\n");
 			usleep(100000);
 		}
-		if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("Connection failed\n");
+		if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("连接失败\n");
 
 		uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
 		if (!bootmode) {
 			uint8_t hello[10] = { 0x7e,0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e, 0x7e };
 
-			if (!(bytes_written = call_Write(io->handle, hello, sizeof(hello)))) ERR_EXIT("Error writing to serial port\n");
+			if (!(bytes_written = call_Write(io->handle, hello, sizeof(hello)))) ERR_EXIT("写入串行端口时出错\n");
 			if (io->verbose >= 2) {
-				DBG_LOG("send (%d):\n", (int)sizeof(hello));
+				DBG_LOG("发送 (%d):\n", (int)sizeof(hello));
 				print_mem(stderr, hello, sizeof(hello));
 			}
-			if (!(bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout))) ERR_EXIT("read response from boot mode failed\n");
+			if (!(bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout))) ERR_EXIT("从启动模式读取响应失败\n");
 			if (io->verbose >= 2) {
-				DBG_LOG("read (%d):\n", bytes_read);
+				DBG_LOG("读取 (%d):\n", bytes_read);
 				print_mem(stderr, io->recv_buf, bytes_read);
 			}
 			if (io->recv_buf[2] == BSL_REP_VER) return;
@@ -2047,15 +2048,15 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		else if (at) payload[8] = 0x81;
 		else payload[8] = bootmode + 0x80;
 
-		if (!(bytes_written = call_Write(io->handle, payload, sizeof(payload)))) ERR_EXIT("Error writing to serial port\n");
+		if (!(bytes_written = call_Write(io->handle, payload, sizeof(payload)))) ERR_EXIT("写入串行端口时出错\n");
 		if (io->verbose >= 2) {
-			DBG_LOG("send (%d):\n", (int)sizeof(payload));
+			DBG_LOG("发送 (%d):\n", (int)sizeof(payload));
 			print_mem(stderr, payload, sizeof(payload));
 		}
 		if ((bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout)))
 		{
 			if (io->verbose >= 2) {
-				DBG_LOG("read (%d):\n", bytes_read);
+				DBG_LOG("读取 (%d):\n", bytes_read);
 				print_mem(stderr, io->recv_buf, bytes_read);
 			}
 			if (io->recv_buf[2] == BSL_REP_VER) { if (io->recv_buf[9] < '4') return; }
@@ -2066,19 +2067,19 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 				if ((bytes_written = call_Write(io->handle, autod, sizeof(autod))))
 				{
 					if (io->verbose >= 2) {
-						DBG_LOG("send (%d):\n", (int)sizeof(autod));
+						DBG_LOG("发送 (%d):\n", (int)sizeof(autod));
 						print_mem(stderr, autod, sizeof(autod));
 					}
 					if ((bytes_read = call_Read(io->handle, io->recv_buf, RECV_BUF_LEN, io->timeout)))
 					{
 						uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
 						if (io->verbose >= 2) {
-							DBG_LOG("read (%d):\n", bytes_read);
+							DBG_LOG("读取 (%d):\n", bytes_read);
 							print_mem(stderr, io->recv_buf, bytes_read);
 						}
 						if (!memcmp(io->recv_buf + bytes_read - 7, ok, 6)) done = 1;
 						else {
-							DBG_LOG("Unknown response\n");
+							DBG_LOG("未知响应\n");
 							if (io->verbose < 2) print_mem(stderr, io->recv_buf, bytes_read);
 						}
 					}
@@ -2098,7 +2099,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 			if (i >= 100)
 			{
 				if (io->recv_buf[2] == BSL_REP_VER) return;
-				else ERR_EXIT("kick reboot timeout, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+				else ERR_EXIT("取消重启超时，按电源键和音量+键7-10秒重启手机。\n");
 			}
 			usleep(100000);
 		}
@@ -2124,7 +2125,7 @@ void* UsbThrdFunc(void* param) {
 	while (bListenLibusb) {
 		ret = libusb_handle_events(NULL);
 		if (ret < 0)
-			DBG_LOG("libusb_handle_events() failed: %s\n", libusb_error_name(ret));
+			DBG_LOG("libusb_handle_events() 失败: %s\n", libusb_error_name(ret));
 	}
 	return NULL;
 }
@@ -2140,12 +2141,12 @@ void startUsbEventHandle(void) {
 		HotplugCbFunc,
 		NULL,
 		&gHotplugCbHandle);
-	if (ret != LIBUSB_SUCCESS) ERR_EXIT("libusb_hotplug_register_callback failed, error: %d\n", ret);
+	if (ret != LIBUSB_SUCCESS) ERR_EXIT("libusb_hotplug_register_callback 失败, 错误: %d\n", ret);
 
 	ret = pthread_create(&gUsbEventThrd, NULL, UsbThrdFunc, NULL);
 	if (ret != 0) {
 		libusb_hotplug_deregister_callback(NULL, gHotplugCbHandle);
-		ERR_EXIT("Failed to create thread, error: %d\n", ret);
+		ERR_EXIT("创建线程失败, 错误: %d\n", ret);
 	}
 
 	bListenLibusb = 1;
@@ -2156,24 +2157,25 @@ void stopUsbEventHandle(void) {
 	libusb_hotplug_deregister_callback(NULL, gHotplugCbHandle);
 
 	int ret = pthread_join(gUsbEventThrd, NULL);
-	if (ret != 0) DBG_LOG("Failed to join thread, error: %d\n", ret);
+	if (ret != 0) DBG_LOG("加入线程失败，错误: %d\n", ret);
 }
 
 void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 {
 	int err, bytes_written, bytes_read;
-	if (bootmode >= 0x80) ERR_EXIT("mode not exist\n");
+	if (bootmode >= 0x80) ERR_EXIT("模式不存在\n");
 	int done = 0;
 
 	while (!done)
 	{
-		DBG_LOG("Waiting for boot_diag/cali_diag/dl_diag connection (%ds)\n", ms / 1000);
+		DBG_LOG("使用kick时可能需要手动重连(dl_diag)");
+		DBG_LOG("正在等待 boot_diag/cali_diag/dl_diag 连接 (%ds)\n", ms / 1000);
 		for (int i = 0; ; i++) {
 			if (curPort) break;
-			if (100 * i >= ms) ERR_EXIT("find port failed\n");
+			if (100 * i >= ms) ERR_EXIT("查找端口失败\n");
 			usleep(100000);
 		}
-		if (libusb_open(curPort, &io->dev_handle) < 0) ERR_EXIT("Connection failed\n");
+		if (libusb_open(curPort, &io->dev_handle) < 0) ERR_EXIT("连接失败\n");
 		call_Initialize_libusb(io);
 
 		uint8_t payload[10] = { 0x7e,0,0,0,0,8,0,0xfe,0,0x7e };
@@ -2183,19 +2185,19 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 			err = libusb_bulk_transfer(io->dev_handle,
 				io->endp_out, hello, sizeof(hello), &bytes_written, io->timeout);
 			if (err < 0)
-				ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+				ERR_EXIT("usb_send 失败 : %s\n", libusb_error_name(err));
 			if (io->verbose >= 2) {
-				DBG_LOG("send (%d):\n", (int)sizeof(hello));
+				DBG_LOG("发送 (%d):\n", (int)sizeof(hello));
 				print_mem(stderr, hello, sizeof(hello));
 			}
 			err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
 			if (err == LIBUSB_ERROR_NO_DEVICE)
-				ERR_EXIT("connection closed\n");
+				ERR_EXIT("连接关闭\n");
 			else if (err < 0)
 				ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
-			if (!bytes_read) ERR_EXIT("read response from boot mode failed\n");
+			if (!bytes_read) ERR_EXIT("从启动模式读取响应失败\n");
 			if (io->verbose >= 2) {
-				DBG_LOG("read (%d):\n", bytes_read);
+				DBG_LOG("读取 (%d):\n", bytes_read);
 				print_mem(stderr, io->recv_buf, bytes_read);
 			}
 			if (io->recv_buf[2] == BSL_REP_VER) return;
@@ -2207,20 +2209,20 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 		err = libusb_bulk_transfer(io->dev_handle,
 			io->endp_out, payload, sizeof(payload), &bytes_written, io->timeout);
 		if (err < 0)
-			ERR_EXIT("usb_send failed : %s\n", libusb_error_name(err));
+			ERR_EXIT("usb_send 失败 : %s\n", libusb_error_name(err));
 		if (io->verbose >= 2) {
-			DBG_LOG("send (%d):\n", (int)sizeof(payload));
+			DBG_LOG("发送 (%d):\n", (int)sizeof(payload));
 			print_mem(stderr, payload, sizeof(payload));
 		}
 		err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
 		if (err == LIBUSB_ERROR_NO_DEVICE)
-			DBG_LOG("connection closed\n");
+			DBG_LOG("连接关闭\n");
 		else if (err < 0)
-			ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
+			ERR_EXIT("usb_recv 失败 : %s\n", libusb_error_name(err));
 		else if (bytes_read)
 		{
 			if (io->verbose >= 2) {
-				DBG_LOG("read (%d):\n", bytes_read);
+				DBG_LOG("读取 (%d):\n", bytes_read);
 				print_mem(stderr, io->recv_buf, bytes_read);
 			}
 			if (io->recv_buf[2] == BSL_REP_VER) { if (io->recv_buf[9] < '4') return; }
@@ -2233,24 +2235,24 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 				if (err >= 0)
 				{
 					if (io->verbose >= 2) {
-						DBG_LOG("send (%d):\n", (int)sizeof(autod));
+						DBG_LOG("发送 (%d):\n", (int)sizeof(autod));
 						print_mem(stderr, autod, sizeof(autod));
 					}
 					err = libusb_bulk_transfer(io->dev_handle, io->endp_in, io->recv_buf, RECV_BUF_LEN, &bytes_read, io->timeout);
 					if (err == LIBUSB_ERROR_NO_DEVICE)
-						DBG_LOG("connection closed\n");
+						DBG_LOG("连接关闭\n");
 					else if (err < 0)
-						ERR_EXIT("usb_recv failed : %s\n", libusb_error_name(err));
+						ERR_EXIT("usb_recv 失败 : %s\n", libusb_error_name(err));
 					else if (bytes_read)
 					{
 						uint8_t ok[] = { 0xd,0xa,0x4f,0x4b,0xd,0xa };
 						if (io->verbose >= 2) {
-							DBG_LOG("read (%d):\n", bytes_read);
+							DBG_LOG("读取 (%d):\n", bytes_read);
 							print_mem(stderr, io->recv_buf, bytes_read);
 						}
 						if (!memcmp(io->recv_buf + bytes_read - 7, ok, 6)) done = 1;
 						else {
-							DBG_LOG("Unknown response\n");
+							DBG_LOG("未知响应\n");
 							if (io->verbose < 2) print_mem(stderr, io->recv_buf, bytes_read);
 						}
 					}
@@ -2270,7 +2272,7 @@ void ChangeMode(spdio_t* io, int ms, int bootmode, int at)
 			if (i >= 100)
 			{
 				if (io->recv_buf[2] == BSL_REP_VER) return;
-				else ERR_EXIT("kick reboot timeout, reboot your phone by pressing POWER and VOL_UP for 7-10 seconds.\n");
+				else ERR_EXIT("取消重启超时，按电源键和音量+键7-10秒重启手机。\n");
 			}
 			usleep(100000);
 		}
@@ -2285,8 +2287,8 @@ void call_Initialize_libusb(spdio_t* io)
 	io->endp_in = endpoints[0];
 	io->endp_out = endpoints[1];
 	int ret = libusb_control_transfer(io->dev_handle, 0x21, 34, 0x601, 0, NULL, 0, io->timeout);
-	if (ret < 0) ERR_EXIT("libusb_control_transfer failed : %s\n", libusb_error_name(ret));
-	DBG_LOG("libusb_control_transfer ok\n");
+	if (ret < 0) ERR_EXIT("libusb_control_transfer 失败 : %s\n", libusb_error_name(ret));
+	DBG_LOG("libusb_control_transfer 成功\n");
 	m_bOpened = 1;
 }
 #endif

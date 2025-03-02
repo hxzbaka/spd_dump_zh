@@ -13,82 +13,84 @@
 void print_help(void)
 {
 	DBG_LOG(
-		"è¯´æ˜\n"
-		"\tspd_dump [é€‰é¡¹] [æŒ‡ä»¤] [é€€å‡ºæŒ‡ä»¤]\n"
-		"\nä¾‹å­\n"
-		"\tå•çº¿æ¨¡å¼\n"
+		"ËµÃ÷\n"
+		"\tspd_dump [Ñ¡Ïî] [Ö¸Áî] [ÍË³öÖ¸Áî]\n"
+		"\nÀı×Ó\n"
+		"\tµ¥ÏßÄ£Ê½\n"
 		"\t\tspd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec path savepath r all_lite reset\n"
 		"\tInteractive mode\n"
 		"\t\tspd_dump --wait 300 fdl /path/to/fdl1 fdl1_addr fdl /path/to/fdl2 fdl2_addr exec\n"
-		"\tæˆåŠŸååº”æç¤º FDL2>\n"
-		"\né€‰é¡¹\n"
-		"\t--wait <ç§’æ•°>\n"
-		"\t\tæŒ‡å®šç­‰å¾…è®¾å¤‡è¿æ¥çš„æ—¶é—´ã€‚\n"
-		"\t--stage <æ•°å­—>|-r|--reconnect\n"
-		"\t\tå°è¯•é‡æ–°è¿æ¥åœ¨brom/fdl1/fdl2é˜¶æ®µçš„è®¾å¤‡ã€‚æ•°å­—è¾“å…¥å¤šå°‘æ— æ‰€è°“ï¼ˆç”šè‡³éæ•°å­—ä¹Ÿè¡Œï¼‰ã€‚\n"
-		"\t\t(å¤„äºbrom/fdl1é˜¶æ®µçš„è®¾å¤‡å¯ä»¥æ— é™æ¬¡é‡æ–°è¿æ¥ï¼Œä½†åœ¨fdl2é˜¶æ®µåªèƒ½é‡æ–°è¿æ¥ä¸€æ¬¡)\n"
-		"\t--verbose <ç­‰çº§>\n"
-		"\t\tè®¾ç½®å±å¹•æ—¥å¿—çš„è¯¦ç»†ç¨‹åº¦ï¼ˆæ”¯æŒ0ã€1æˆ–2ï¼Œä¸å½±å“æ–‡ä»¶æ—¥å¿—ï¼‰ã€‚\n"
+		"\t³É¹¦ºóÓ¦ÌáÊ¾ FDL2>\n"
+		"\nÑ¡Ïî\n"
+		"\t--wait <ÃëÊı>\n"
+		"\t\tÖ¸¶¨µÈ´ıÉè±¸Á¬½ÓµÄÊ±¼ä¡£\n"
+		"\t--stage <Êı×Ö>|-r|--reconnect\n"
+		"\t\t³¢ÊÔÖØĞÂÁ¬½ÓÔÚbrom/fdl1/fdl2½×¶ÎµÄÉè±¸¡£Êı×ÖÊäÈë¶àÉÙÎŞËùÎ½£¨ÉõÖÁ·ÇÊı×ÖÒ²ĞĞ£©¡£\n"
+		"\t\t(´¦ÓÚbrom/fdl1½×¶ÎµÄÉè±¸¿ÉÒÔÎŞÏŞ´ÎÖØĞÂÁ¬½Ó£¬µ«ÔÚfdl2½×¶ÎÖ»ÄÜÖØĞÂÁ¬½ÓÒ»´Î)\n"
+		"\t--verbose <µÈ¼¶>\n"
+		"\t\tÉèÖÃÆÁÄ»ÈÕÖ¾µÄÏêÏ¸³Ì¶È£¨Ö§³Ö0¡¢1»ò2£¬²»Ó°ÏìÎÄ¼şÈÕÖ¾£©¡£\n"
 		"\t--kick\n"
-		"\t\tä½¿ç”¨ boot_diag->cali_diag->dl_diag é€”å¾„è¿æ¥è®¾å¤‡ã€‚\n"
+		"\t\tÊ¹ÓÃ boot_diag->cali_diag->dl_diag Í¾¾¶Á¬½ÓÉè±¸¡£\n"
 		"\t--kickto <mode>\n"
-		"\t\tä½¿ç”¨boot_diag->custom_diag é€”å¾„è¿æ¥è®¾å¤‡ã€‚æ”¯æŒçš„æ¨¡å¼ä¸º0-127ã€‚\n"
-		"\t\t(æ¨¡å¼0ä¸ºums9621å¹³å°çš„æ–°ç‰ˆ--kickto 2, æ¨¡å¼ 1 = cali_diag, æ¨¡å¼ 2 = dl_diag; å¹¶éæ‰€æœ‰è®¾å¤‡éƒ½æ”¯æŒæ¨¡å¼ 2)\n"
+		"\t\tÊ¹ÓÃboot_diag->custom_diag Í¾¾¶Á¬½ÓÉè±¸¡£Ö§³ÖµÄÄ£Ê½Îª0-127¡£\n"
+		"\t\t(Ä£Ê½0Îªums9621Æ½Ì¨µÄĞÂ°æ--kickto 2, Ä£Ê½ 1 = cali_diag, Ä£Ê½ 2 = dl_diag; ²¢·ÇËùÓĞÉè±¸¶¼Ö§³ÖÄ£Ê½ 2)\n"
 		"\t-?|-h|--help\n"
-		"\t\tæ˜¾ç¤ºä½¿ç”¨å¸®åŠ©ã€‚\n"
-		"\nè¿è¡Œæ—¶å‘½ä»¤\n"
-		"\tverbose <ç­‰çº§>\n"
-		"\t\tè®¾ç½®å±å¹•æ—¥å¿—çš„è¯¦ç»†ç¨‹åº¦ï¼ˆæ”¯æŒ0ã€1æˆ–2ï¼Œä¸å½±å“æ–‡ä»¶æ—¥å¿—ï¼‰ã€‚\n"
-		"\ttimeout <æ¯«ç§’>\n"
-		"\t\tè®¾ç½®è¯»å†™ç­‰å¾…çš„è¶…æ—¶æ—¶é—´ï¼ˆæ¯«ç§’ï¼‰\n"
-		"\tbaudrate [æ³¢ç‰¹ç‡]\n\t\t(ä»…é™Windows SPRDé©±åŠ¨ç¨‹åºå’Œbrom/fdl2é˜¶æ®µ)\n"
-		"\t\tæ”¯æŒçš„æ³¢ç‰¹ç‡ä¸º57600ã€115200ã€230400ã€460800ã€921600ã€1000000ã€2000000ã€3250000å’Œ4000000ã€‚\n"
-		"\t\tåœ¨u-boot/littlekernelæºä»£ç ä¸­ï¼Œåªåˆ—å‡ºäº†115200ã€230400ã€460800å’Œ921600ã€‚\n"
-		"\texec_addr [addr]\n\t\tï¼ˆä»…é™bromé˜¶æ®µï¼‰\n"
-		"\t\tå°† customexec_no_verify_addr.bin å‘é€åˆ°æŒ‡å®šçš„å†…å­˜åœ°å€ï¼Œä»¥ç»•è¿‡bromå¯¹ splloader/fdl1 çš„ç­¾åéªŒè¯ã€‚\n"
-		"\t\tç”¨äºCVE-2022-38694ã€‚\n"
-		"\tfdl <æ–‡ä»¶è·¯å¾„> <åœ°å€>\n"
-		"\t\tå°†æ–‡ä»¶ï¼ˆsplloader,fdl1,fdl2,sml,trustos,teecfgï¼‰å‘é€åˆ°æŒ‡å®šçš„å†…å­˜åœ°å€ã€‚\n"
+		"\t\tÏÔÊ¾Ê¹ÓÃ°ïÖú¡£\n"
+		"\nÔËĞĞÊ±ÃüÁî\n"
+		"\tverbose <µÈ¼¶>\n"
+		"\t\tÉèÖÃÆÁÄ»ÈÕÖ¾µÄÏêÏ¸³Ì¶È£¨Ö§³Ö0¡¢1»ò2£¬²»Ó°ÏìÎÄ¼şÈÕÖ¾£©¡£\n"
+		"\ttimeout <ºÁÃë>\n"
+		"\t\tÉèÖÃ¶ÁĞ´µÈ´ıµÄ³¬Ê±Ê±¼ä£¨ºÁÃë£©\n"
+		"\tbaudrate [²¨ÌØÂÊ]\n\t\t(½öÏŞWindows SPRDÇı¶¯³ÌĞòºÍbrom/fdl2½×¶Î)\n"
+		"\t\tÖ§³ÖµÄ²¨ÌØÂÊÎª57600¡¢115200¡¢230400¡¢460800¡¢921600¡¢1000000¡¢2000000¡¢3250000ºÍ4000000¡£\n"
+		"\t\tÔÚu-boot/littlekernelÔ´´úÂëÖĞ£¬Ö»ÁĞ³öÁË115200¡¢230400¡¢460800ºÍ921600¡£\n"
+		"\texec_addr [addr]\n\t\t£¨½öÏŞbrom½×¶Î£©\n"
+		"\t\t½« customexec_no_verify_addr.bin ·¢ËÍµ½Ö¸¶¨µÄÄÚ´æµØÖ·£¬ÒÔÈÆ¹ıbrom¶Ô splloader/fdl1 µÄÇ©ÃûÑéÖ¤¡£\n"
+		"\t\tÓÃÓÚCVE-2022-38694¡£\n"
+		"\tfdl <ÎÄ¼şÂ·¾¶> <µØÖ·>\n"
+		"\t\t½«ÎÄ¼ş£¨splloader,fdl1,fdl2,sml,trustos,teecfg£©·¢ËÍµ½Ö¸¶¨µÄÄÚ´æµØÖ·¡£\n"
+		"\tloadfdl <ÎÄ¼şÂ·¾¶>\n"
+		"\t\t½«ÎÄ¼ş£¨splloader,fdl1,fdl2,sml,trustos,teecfg£©·¢ËÍµ½ÒÔÎÄ¼şÃûµÄÄÚ´æµØÖ·,Èç:0x9efffe00.bin\n"
 		"\texec\n"
-		"\t\tåœ¨fdl1é˜¶æ®µæ‰§è¡Œå·²å‘é€çš„æ–‡ä»¶ã€‚é€šå¸¸ä¸smlæˆ–fdl2ï¼ˆä¹Ÿç§°ä¸ºuboot/lkï¼‰ä¸€èµ·ä½¿ç”¨ã€‚\n"
-		"\tpath [ä¿å­˜è·¯å¾„]\n"
-		"\t\tæ›´æ”¹r,read_part(s),read_flashå’Œread_memå‘½ä»¤çš„ä¿å­˜ç›®å½•ã€‚\n"
+		"\t\tÔÚfdl1½×¶ÎÖ´ĞĞÒÑ·¢ËÍµÄÎÄ¼ş¡£Í¨³£Óësml»òfdl2£¨Ò²³ÆÎªuboot/lk£©Ò»ÆğÊ¹ÓÃ¡£\n"
+		"\tpath [±£´æÂ·¾¶]\n"
+		"\t\t¸ü¸Är,read_part(s),read_flashºÍread_memÃüÁîµÄ±£´æÄ¿Â¼¡£\n"
 		"\tnand_id [id]\n"
-		"\t\tæŒ‡å®šnandèŠ¯ç‰‡çš„4th idå‚æ•°ï¼Œè¯¥å‚æ•°å½±å“read_part(s)åˆ†åŒºå¤§å°çš„ç®—æ³•ï¼Œé»˜è®¤å€¼ä¸º0x15ã€‚\n"
-		"\trawdata {0,2}\n\t\tï¼ˆä»…é™fdl2é˜¶æ®µï¼‰\n"
-		"\t\trawdataåè®®ç”¨äºåŠ é€Ÿwå’Œwrite_partå‘½ä»¤ï¼Œå½“rawdataä¸º2æ—¶ï¼Œå†™å…¥é€Ÿåº¦ä¸blk_sizeæ— å…³\n"
-		"\t\trawdataåè®®ç”¨äºåŠ é€Ÿwå’Œwrite_partå‘½ä»¤ï¼Œå½“rawdataä¸º2æ—¶ï¼Œå†™å…¥é€Ÿåº¦ä¸blk_sizeæ— å…³ï¼ˆä¾èµ–äºu-boot/lkï¼Œå› æ­¤é»˜è®¤2çš„å¯ä»¥æ”¹0/2ï¼Œé»˜è®¤0çš„ä¸èƒ½æ”¹2ï¼Œæ³¨æ„ï¼šæš‚æ—¶ä¸æ”¯æŒé»˜è®¤rawdata=1çš„è®¾å¤‡ï¼‰\n"
-		"\tblk_size <byte>\n\t\tï¼ˆä»…é™fdl2é˜¶æ®µï¼‰\n"
-		"\t\tè®¾ç½®å—å¤§å°ï¼Œæœ€å¤§ä¸º65535å­—èŠ‚ã€‚æ­¤é€‰é¡¹ç”¨äºåŠ å¿«rã€wã€read_part(s)å’Œwrite_part(s)å‘½ä»¤çš„é€Ÿåº¦ã€‚\n"
-		"\tr all|åˆ†åŒºåç§°|åˆ†åŒºid\n"
-		"\t\tå½“åˆ†åŒºè¡¨å¯ç”¨æ—¶ï¼š\n"
-		"\t\t\tr all: å…¨ç›˜å¤‡ä»½ (è·³è¿‡ blackbox, cache, userdata)\n"
-		"\t\t\tr all_lite: å…¨ç›˜å¤‡ä»½ (éæ´»åŠ¨æ’æ§½åˆ†åŒº, blackbox, cache, and userdata)\n"
-		"\t\tWå½“åˆ†åŒºè¡¨ä¸å¯ç”¨æ—¶:\n"
-		"\t\t\tr å°†è‡ªåŠ¨è®¡ç®—éƒ¨ä»¶å¤§å°ï¼ˆæ”¯æŒemmc/ufsä¸Šçš„æ‰€æœ‰åˆ†åŒºï¼ŒNANDä¸Šä»…æ”¯æŒubipacåˆ†åŒºï¼‰\n"
-		"\tread_part <åˆ†åŒºåç§°|åˆ†åŒºid> <åç§»é‡> <å¤§å°> <ä¿å­˜è·¯å¾„>\n"
-		"\t\tä»¥ç»™å®šçš„åç§»é‡å’Œå¤§å°å°†ç‰¹å®šåˆ†åŒºè¯»å–åˆ°æ–‡ä»¶ä¸­ã€‚\n"
-		"\t\tï¼ˆåœ¨nandä¸Šè¯»å–ubiï¼‰read_part system 0 ubi40m system.bin\n"
-		"\tread_parts <åˆ†åŒºè¡¨æ–‡ä»¶>\n"
-		"\t\tæŒ‰ç…§XMLç±»å‹åˆ†åŒºåˆ—è¡¨ä»è®¾å¤‡è¯»å–åˆ†åŒºï¼ˆå¦‚æœæ–‡ä»¶åä»¥â€œubiâ€å¼€å¤´ï¼Œåˆ™å°†ä½¿ç”¨NAND IDè®¡ç®—å¤§å°ï¼‰\n"
-		"\tw|write_part åˆ†åŒºåç§°|åˆ†åŒºid <æ–‡ä»¶è·¯å¾„>\n"
-		"\t\tå°†æŒ‡å®šçš„æ–‡ä»¶å†™å…¥åˆ†åŒºã€‚\n"
-		"\twrite_parts <ä¿å­˜æ–‡ä»¶å¤¹è·¯å¾„>\n"
-		"\t\tå†™å…¥æŒ‡å®šæ–‡ä»¶å¤¹ä¸‹æ‰€æœ‰æ–‡ä»¶åˆ°è®¾å¤‡åˆ†åŒºï¼Œé€šå¸¸ç”±read_partså¾—åˆ°ã€‚\n"
-		"\te|erase_part åˆ†åŒºåç§°|åˆ†åŒºid\n"
-		"\t\tæ“¦é™¤æŒ‡å®šåˆ†åŒºã€‚\n"
-		"\tpartition_list <åˆ†åŒºè¡¨è·¯å¾„>\n"
-		"\t\tè¯»å–emmc/ufsä¸Šçš„åˆ†åŒºåˆ—è¡¨ï¼Œå¹¶éæ‰€æœ‰fdl2éƒ½æ”¯æŒæ­¤å‘½ä»¤ã€‚\n"
-		"\trepartition <xmlåˆ†åŒºè¡¨æ–‡ä»¶>\n"
-		"\t\æ ¹æ®XMLç±»å‹åˆ†åŒºåˆ—è¡¨é‡æ–°åˆ†åŒºã€‚\n"
+		"\t\tÖ¸¶¨nandĞ¾Æ¬µÄ4th id²ÎÊı£¬¸Ã²ÎÊıÓ°Ïìread_part(s)·ÖÇø´óĞ¡µÄËã·¨£¬Ä¬ÈÏÖµÎª0x15¡£\n"
+		"\trawdata {0,2}\n\t\t£¨½öÏŞfdl2½×¶Î£©\n"
+		"\t\trawdataĞ­ÒéÓÃÓÚ¼ÓËÙwºÍwrite_partÃüÁî£¬µ±rawdataÎª2Ê±£¬Ğ´ÈëËÙ¶ÈÓëblk_sizeÎŞ¹Ø\n"
+		"\t\trawdataĞ­ÒéÓÃÓÚ¼ÓËÙwºÍwrite_partÃüÁî£¬µ±rawdataÎª2Ê±£¬Ğ´ÈëËÙ¶ÈÓëblk_sizeÎŞ¹Ø£¨ÒÀÀµÓÚu-boot/lk£¬Òò´ËÄ¬ÈÏ2µÄ¿ÉÒÔ¸Ä0/2£¬Ä¬ÈÏ0µÄ²»ÄÜ¸Ä2£¬×¢Òâ£ºÔİÊ±²»Ö§³ÖÄ¬ÈÏrawdata=1µÄÉè±¸£©\n"
+		"\tblk_size <byte>\n\t\t£¨½öÏŞfdl2½×¶Î£©\n"
+		"\t\tÉèÖÃ¿é´óĞ¡£¬×î´óÎª65535×Ö½Ú¡£´ËÑ¡ÏîÓÃÓÚ¼Ó¿ìr¡¢w¡¢read_part(s)ºÍwrite_part(s)ÃüÁîµÄËÙ¶È¡£\n"
+		"\tr all|·ÖÇøÃû³Æ|·ÖÇøid\n"
+		"\t\tµ±·ÖÇø±í¿ÉÓÃÊ±£º\n"
+		"\t\t\tr all: È«ÅÌ±¸·İ (Ìø¹ı blackbox, cache, userdata)\n"
+		"\t\t\tr all_lite: È«ÅÌ±¸·İ (·Ç»î¶¯²å²Û·ÖÇø, blackbox, cache, and userdata)\n"
+		"\t\tWµ±·ÖÇø±í²»¿ÉÓÃÊ±:\n"
+		"\t\t\tr ½«×Ô¶¯¼ÆËã²¿¼ş´óĞ¡£¨Ö§³Öemmc/ufsÉÏµÄËùÓĞ·ÖÇø£¬NANDÉÏ½öÖ§³Öubipac·ÖÇø£©\n"
+		"\tread_part <·ÖÇøÃû³Æ|·ÖÇøid> <Æ«ÒÆÁ¿> <´óĞ¡> <±£´æÂ·¾¶>\n"
+		"\t\tÒÔ¸ø¶¨µÄÆ«ÒÆÁ¿ºÍ´óĞ¡½«ÌØ¶¨·ÖÇø¶ÁÈ¡µ½ÎÄ¼şÖĞ¡£\n"
+		"\t\t£¨ÔÚnandÉÏ¶ÁÈ¡ubi£©read_part system 0 ubi40m system.bin\n"
+		"\tread_parts <·ÖÇø±íÎÄ¼ş>\n"
+		"\t\t°´ÕÕXMLÀàĞÍ·ÖÇøÁĞ±í´ÓÉè±¸¶ÁÈ¡·ÖÇø£¨Èç¹ûÎÄ¼şÃûÒÔ¡°ubi¡±¿ªÍ·£¬Ôò½«Ê¹ÓÃNAND ID¼ÆËã´óĞ¡£©\n"
+		"\tw|write_part ·ÖÇøÃû³Æ|·ÖÇøid <ÎÄ¼şÂ·¾¶>\n"
+		"\t\t½«Ö¸¶¨µÄÎÄ¼şĞ´Èë·ÖÇø¡£\n"
+		"\twrite_parts <±£´æÎÄ¼ş¼ĞÂ·¾¶>\n"
+		"\t\tĞ´ÈëÖ¸¶¨ÎÄ¼ş¼ĞÏÂËùÓĞÎÄ¼şµ½Éè±¸·ÖÇø£¬Í¨³£ÓÉread_partsµÃµ½¡£\n"
+		"\te|erase_part ·ÖÇøÃû³Æ|·ÖÇøid\n"
+		"\t\t²Á³ıÖ¸¶¨·ÖÇø¡£\n"
+		"\tpartition_list <·ÖÇø±íÂ·¾¶>\n"
+		"\t\t¶ÁÈ¡emmc/ufsÉÏµÄ·ÖÇøÁĞ±í£¬²¢·ÇËùÓĞfdl2¶¼Ö§³Ö´ËÃüÁî¡£\n"
+		"\trepartition <xml·ÖÇø±íÎÄ¼ş>\n"
+		"\t¸ù¾İXMLÀàĞÍ·ÖÇøÁĞ±íÖØĞÂ·ÖÇø¡£\n"
 		"\tp|print\n"
-		"\t\tæ‰“å°åˆ†åŒºåˆ—è¡¨\n"
+		"\t\t´òÓ¡·ÖÇøÁĞ±í\n"
 		"\tverity {0,1}\n"
-		"\t\tåœ¨Android 10(+)ä¸Šç¦ç”¨æˆ–å¯ç”¨dm-verity\n"
-		"\né€€å‡ºæŒ‡ä»¤\n"
-		"\t(ä¸€èˆ¬äºFDL2é˜¶æ®µå¯ç”¨å¯ç”¨ï¼›åªæœ‰å¾ˆæ–°çš„FDL1æ‰æ”¯æŒ)\n"
-		"\treset é‡å¯\n"
-		"\tpoweroff å…³æœºï¼ˆåœ¨è®¾å¤‡æ–­å¼€usbåï¼‰\n"
+		"\t\tÔÚAndroid 10(+)ÉÏ½ûÓÃ»òÆôÓÃdm-verity\n"
+		"\nÍË³öÖ¸Áî\n"
+		"\t(Ò»°ãÓÚFDL2½×¶Î¿ÉÓÃ¿ÉÓÃ£»Ö»ÓĞºÜĞÂµÄFDL1²ÅÖ§³Ö)\n"
+		"\treset ÖØÆô\n"
+		"\tpoweroff ¹Ø»ú£¨ÔÚÉè±¸¶Ï¿ªusbºó£©\n"
 	);
 }
 
@@ -103,6 +105,7 @@ int fdl2_executed = 0;
 int selected_ab = -1;
 uint64_t fblk_size = 0;
 int main(int argc, char **argv) {
+	SetConsoleOutputCP(936);
 	spdio_t *io = NULL; int ret, i, in_quote;
 	int wait = 30 * REOPEN_FREQ;
 	int argcount = 0, stage = -1, nand_id = DEFAULT_NAND_ID;
@@ -125,7 +128,7 @@ int main(int argc, char **argv) {
 	extern libusb_device** ports;
 #endif
 	execfile = malloc(ARGV_LEN);
-	if (!execfile) ERR_EXIT("å†…å­˜åˆ†é…å¤±è´¥\n");
+	if (!execfile) ERR_EXIT("ÄÚ´æ·ÖÅäÊ§°Ü\n");
 
 	io = spdio_init(0);
 #if USE_LIBUSB
@@ -138,46 +141,49 @@ int main(int argc, char **argv) {
 #endif
 	ret = libusb_init(NULL);
 	if (ret < 0)
-		ERR_EXIT("libusb_init å¤±è´¥: %s\n", libusb_error_name(ret));
+		ERR_EXIT("libusb_init Ê§°Ü: %s\n", libusb_error_name(ret));
 #else
 	io->handle = createClass();
 	call_Initialize(io->handle);
 #endif
-	DBG_LOG("åˆ†æ”¯:%s, sha1:%s\n", GIT_VER, GIT_SHA1);
+	DBG_LOG("spd_dumpÖĞÎÄ°æ, °æ±¾:dev_xxxx_xxx\n");
+	DBG_LOG("ºº»¯²Ö¿â:https://github.com/hxzbaka/spd_dump_zh\n");
+	DBG_LOG("Ô­°æ²Ö¿â:https://github.com/TomKing062/spreadtrum_flash\n");
+	DBG_LOG("\n");
 	sprintf(fn_partlist, "partition_%lld.xml", (long long)time(NULL));
 	while (argc > 1) {
 		if (!strcmp(argv[1], "--wait")) {
-			if (argc <= 2) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 2) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			wait = atoi(argv[2]) * REOPEN_FREQ;
 			argc -= 2; argv += 2;
 		} else if (!strcmp(argv[1], "--verbose")) {
-			if (argc <= 2) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 2) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			io->verbose = atoi(argv[2]);
 			argc -= 2; argv += 2;
 		} else if (!strcmp(argv[1], "--stage")) {
-			if (argc <= 2) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 2) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			stage = 99;
 			argc -= 2; argv += 2;
 		} else if (strstr(argv[1], "-r")) {
-			if (argc <= 1) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 1) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			stage = 99;
 			argc -= 1; argv += 1;
 		} else if (strstr(argv[1], "help") || strstr(argv[1], "-h") || strstr(argv[1], "-?")) {
-			if (argc <= 1) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 1) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			print_help();
 			return 0;
 #ifdef __ANDROID__
 		} else if (!strcmp(argv[1], "--usb-fd")) { // Termux spec
-			if (argc <= 2) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 2) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			xfd = atoi(argv[argc - 1]);
 			argc -= 2; argv += 1;
 #endif
 		} else if (!strcmp(argv[1], "--kick")) {
-			if (argc <= 1) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 1) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			at = 1;
 			argc -= 1; argv += 1;
 		} else if (!strcmp(argv[1], "--kickto")) {
-			if (argc <= 2) ERR_EXIT("é”™è¯¯çš„é€‰é¡¹\n");
+			if (argc <= 2) ERR_EXIT("´íÎóµÄÑ¡Ïî\n");
 			bootmode = atoi(argv[2]); at = 0;
 			argc -= 2; argv += 2;
 		} else break;
@@ -213,7 +219,7 @@ int main(int argc, char **argv) {
 		}
 	}
 #else
-	if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) { DBG_LOG("æ­¤å¹³å°ä¸Šä¸æ”¯æŒçƒ­æ’æ‹”\n"); bListenLibusb = 0; bootmode = -1; at = 0; }
+	if (!libusb_has_capability(LIBUSB_CAP_HAS_HOTPLUG)) { DBG_LOG("´ËÆ½Ì¨ÉÏ²»Ö§³ÖÈÈ²å°Î\n"); bListenLibusb = 0; bootmode = -1; at = 0; }
 	if (at || bootmode >= 0)
 	{
 		startUsbEventHandle();
@@ -248,26 +254,26 @@ int main(int argc, char **argv) {
 	}
 #endif
 #ifdef __ANDROID__
-	DBG_LOG("å°è¯•è½¬æ¢Termuxä¼ è¾“çš„usbç«¯å£fd\n");
+	DBG_LOG("³¢ÊÔ×ª»»Termux´«ÊäµÄusb¶Ë¿Úfd\n");
 	// handle
 	if (xfd < 0)
-		ERR_EXIT("ä¾‹å­: termux-usb -e \"./spd_dump --usb-fd\" /dev/bus/usb/xxx/xxx\n"
+		ERR_EXIT("Àı×Ó: termux-usb -e \"./spd_dump --usb-fd\" /dev/bus/usb/xxx/xxx\n"
 			"run on android need provide --usb-fd\n");
 
 	if (libusb_wrap_sys_device(NULL, (intptr_t)xfd, &io->dev_handle))
-		ERR_EXIT("libusb_wrap_sys_device æ— æ¡ä»¶é€€å‡ºï¼\n");
+		ERR_EXIT("libusb_wrap_sys_device ÎŞÌõ¼şÍË³ö£¡\n");
 
 	device = libusb_get_device(io->dev_handle);
 	if (libusb_get_device_descriptor(device, &desc))
-		ERR_EXIT("libusb_get_device æ— æ¡ä»¶é€€å‡ºï¼");
+		ERR_EXIT("libusb_get_device ÎŞÌõ¼şÍË³ö£¡");
 
 	DBG_LOG("Vendor ID: %04x\nProduct ID: %04x\n", desc.idVendor, desc.idProduct);
 	if (desc.idVendor != 0x1782 || desc.idProduct != 0x4d00) {
-		ERR_EXIT("specè®¾å¤‡å¯èƒ½ä¸æ˜¯spdè®¾å¤‡ï¼\n");
+		ERR_EXIT("specÉè±¸¿ÉÄÜ²»ÊÇspdÉè±¸£¡\n");
 	}
 	call_Initialize_libusb(io);
 #else
-	if (!m_bOpened) DBG_LOG("æ­£åœ¨ç­‰å¾…dl_diagè¿æ¥ (%ds)\n", wait / REOPEN_FREQ);
+	if (!m_bOpened) DBG_LOG("ÕıÔÚµÈ´ıdl_diagÁ¬½Ó (%ds)\n", wait / REOPEN_FREQ);
 	for (i = 0; ; i++) {
 #if USE_LIBUSB
 		if (bListenLibusb) { if (curPort) break; }
@@ -279,12 +285,12 @@ int main(int argc, char **argv) {
 			}
 		}
 		if (i >= wait)
-			ERR_EXIT("libusb_open_device å¤±è´¥\n");
+			ERR_EXIT("libusb_open_device Ê§°Ü\n");
 #else
 		if (io->verbose) DBG_LOG("CurTime: %.1f, CurPort: %d\n", (float)i / REOPEN_FREQ, curPort);
 		if (curPort) break;
 		if (i >= wait)
-			ERR_EXIT("æŸ¥æ‰¾ç«¯å£å¤±è´¥\n");
+			ERR_EXIT("²éÕÒ¶Ë¿ÚÊ§°Ü\n");
 #endif
 		usleep(1000000 / REOPEN_FREQ);
 	}
@@ -292,10 +298,10 @@ int main(int argc, char **argv) {
 	if (!m_bOpened)
 	{
 		if (libusb_open(curPort, &io->dev_handle) >= 0) call_Initialize_libusb(io);
-		else ERR_EXIT("è¿æ¥å¤±è´¥\n");
+		else ERR_EXIT("Á¬½ÓÊ§°Ü\n");
 	}
 #else
-	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("è¿æ¥å¤±è´¥\n");
+	if (!m_bOpened) if (!call_ConnectChannel(io->handle, curPort)) ERR_EXIT("Á¬½ÓÊ§°Ü\n");
 #endif
 #endif
 	io->flags |= FLAGS_TRANSCODE;
@@ -321,12 +327,12 @@ int main(int argc, char **argv) {
 			{
 				if (fdl1_loaded == 1)
 				{
-					DBG_LOG("æ£€æŸ¥æ³¢ç‰¹ç‡ FDL1\n");
+					DBG_LOG("¼ì²é²¨ÌØÂÊ FDL1\n");
 					if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) fdl2_executed = -1;
 				}
 				else
 				{
-					DBG_LOG("æ£€æŸ¥æ³¢ç‰¹ç‡ bootrom\n");
+					DBG_LOG("¼ì²é²¨ÌØÂÊ bootrom\n");
 					if (!memcmp(io->raw_buf + 4, "SPRD4", 5)) { fdl1_loaded = -1; fdl2_executed = -1; }
 				}
 				DBG_LOG("BSL_REP_VER: ");
@@ -347,13 +353,13 @@ int main(int argc, char **argv) {
 
 			if (fdl1_loaded == 1)
 			{
-				DBG_LOG("è¿æ¥åˆ° FDL1\n");
+				DBG_LOG("Á¬½Óµ½ FDL1\n");
 				if (keep_charge) {
 					encode_msg(io, BSL_CMD_KEEP_CHARGE, NULL, 0);
-					if (!send_and_check(io)) DBG_LOG("ä¿æŒå……ç”µ FDL1\n");
+					if (!send_and_check(io)) DBG_LOG("±£³Ö³äµç FDL1\n");
 				}
 			}
-			else DBG_LOG("è¿æ¥åˆ° bootrom\n");
+			else DBG_LOG("Á¬½Óµ½ bootrom\n");
 			break;
 		}
 		else if (ret == BSL_REP_UNSUPPORTED_COMMAND)
@@ -361,14 +367,14 @@ int main(int argc, char **argv) {
 			encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
 			if (!send_and_check(io)) {
 				io->flags &= ~FLAGS_TRANSCODE;
-				DBG_LOG("ç¦ç”¨è½¬ç \n");
+				DBG_LOG("½ûÓÃ×ªÂë\n");
 			}
 			fdl2_executed = 1;
 			break;
 		}
 		else if (i == 4)
 		{
-			if (stage != -1) ERR_EXIT("æ£€æµ‹åˆ°é”™è¯¯çš„å‘½ä»¤æˆ–é”™è¯¯çš„æ¨¡å¼ï¼Œè¯·æŒ‰ç”µæºé”®å’ŒéŸ³é‡+é”®7-10ç§’é‡æ–°å¯åŠ¨æ‰‹æœºã€‚\n");
+			if (stage != -1) ERR_EXIT("¼ì²âµ½´íÎóµÄÃüÁî»ò´íÎóµÄÄ£Ê½£¬Çë°´µçÔ´¼üºÍÒôÁ¿+¼ü7-10ÃëÖØĞÂÆô¶¯ÊÖ»ú¡£\n");
 			else { encode_msg(io, BSL_CMD_CONNECT, NULL, 0); stage++; i = -1; }
 		}
 	}
@@ -405,7 +411,7 @@ int main(int argc, char **argv) {
 					argcount++;
 					if (argcount == ARGC_MAX) break;
 					str2[argcount] = (char*)malloc(ARGV_LEN);
-					if (!str2[argcount]) ERR_EXIT("è½¬ç å¤±è´¥\n");
+					if (!str2[argcount]) ERR_EXIT("×ªÂëÊ§°Ü\n");
 					memset(str2[argcount], 0, ARGV_LEN);
 				}
 				if (temp[0] == '\'') ifs = '\'';
@@ -434,17 +440,17 @@ int main(int argc, char **argv) {
 		{
 			str2[1] = malloc(1);
 			if (str2[1]) str2[1][0] = '\0';
-			else ERR_EXIT("è½¬ç å¤±è´¥\n");
+			else ERR_EXIT("×ªÂëÊ§°Ü\n");
 			argcount++;
 		}
 
 		if (!strcmp(str2[1], "sendloop")) {
 			const char* fn; uint32_t addr = 0; FILE* fi;
-			if (argcount <= 3) { DBG_LOG("sendloop <æ–‡ä»¶> <åœ°å€>\n"); argc -= 3; argv += 3; continue; }
+			if (argcount <= 3) { DBG_LOG("sendloop <ÎÄ¼ş> <µØÖ·>\n"); argc -= 3; argv += 3; continue; }
 
 			fn = str2[2];
 			fi = fopen(fn, "r");
-			if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨ã€‚\n"); argc -= 3; argv += 3; continue; }
+			if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ¡£\n"); argc -= 3; argv += 3; continue; }
 			else fclose(fi);
 			addr = strtoul(str2[3], NULL, 0);
 			while (1) {
@@ -455,11 +461,11 @@ int main(int argc, char **argv) {
 		}
 		else if (!strcmp(str2[1], "send")) {
 			const char* fn; uint32_t addr = 0; FILE* fi;
-			if (argcount <= 3) { DBG_LOG("send <æ–‡ä»¶> <åœ°å€>\n"); argc -= 3; argv += 3; continue; }
+			if (argcount <= 3) { DBG_LOG("send <ÎÄ¼ş> <µØÖ·>\n"); argc -= 3; argv += 3; continue; }
 
 			fn = str2[2];
 			fi = fopen(fn, "r");
-			if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨ã€‚\n"); argc -= 3; argv += 3; continue; }
+			if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ¡£\n"); argc -= 3; argv += 3; continue; }
 			else fclose(fi);
 			addr = strtoul(str2[3], NULL, 0);
 			send_file(io, fn, addr, 0, 528);
@@ -473,7 +479,7 @@ int main(int argc, char **argv) {
 			fn = str2[2];
 			if (addr_in_name) {
 				argchange = 2;
-				if (argcount <= argchange) { DBG_LOG("loadfdl <æ–‡ä»¶>\n"); argc -= argchange; argv += argchange; continue; }
+				if (argcount <= argchange) { DBG_LOG("loadfdl <ÎÄ¼ş>\n"); argc -= argchange; argv += argchange; continue; }
 				char* pos = NULL, * last_pos = NULL;
 
 				pos = strstr(fn, "0X");
@@ -489,23 +495,23 @@ int main(int argc, char **argv) {
 					}
 				}
 				if (last_pos) addr = strtoul(last_pos, NULL, 16);
-				else DBG_LOG("\"0x\" åœ¨åç§°ä¸­æ‰¾ä¸åˆ°ã€‚\n");
+				else DBG_LOG("\"0x\" ÔÚÃû³ÆÖĞÕÒ²»µ½¡£\n");
 			}
 			else {
 				argchange = 3;
-				if (argcount <= argchange) { DBG_LOG("fdl <æ–‡ä»¶> <åœ°å€>\n"); argc -= argchange; argv += argchange; continue; }
+				if (argcount <= argchange) { DBG_LOG("fdl <ÎÄ¼ş> <µØÖ·>\n"); argc -= argchange; argv += argchange; continue; }
 				addr = strtoul(str2[3], NULL, 0);
 			}
 
 			if (fdl2_executed > 0) {
-				DBG_LOG("FDL2å·²æ‰§è¡Œ, è·³è¿‡\n");
+				DBG_LOG("FDL2ÒÑÖ´ĞĞ, Ìø¹ı\n");
 				argc -= argchange; argv += argchange;
 				continue;
 			} else if (fdl1_loaded > 0) {
 				if (fdl2_executed != -1)
 				{
 					fi = fopen(fn, "r");
-					if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨ã€‚\n"); argc -= argchange; argv += argchange; continue; }
+					if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ¡£\n"); argc -= argchange; argv += argchange; continue; }
 					else fclose(fi);
 					send_file(io, fn, addr, end_data, blk_size ? blk_size : 528);
 				}
@@ -513,7 +519,7 @@ int main(int argc, char **argv) {
 				if (fdl1_loaded != -1)
 				{
 					fi = fopen(fn, "r");
-					if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨ã€‚\n"); argc -= argchange; argv += argchange; continue; }
+					if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ¡£\n"); argc -= argchange; argv += argchange; continue; }
 					else fclose(fi);
 					send_file(io, fn, addr, end_data, 528);
 					if (exec_addr) {
@@ -529,7 +535,7 @@ int main(int argc, char **argv) {
 					encode_msg(io, BSL_CMD_EXEC_DATA, NULL, 0);
 					if (send_and_check(io)) exit(1);
 				}
-				DBG_LOG("æ‰§è¡Œ FDL1\n");
+				DBG_LOG("Ö´ĞĞ FDL1\n");
 				if (addr == 0x5500 || addr == 0x65000800)
 				{
 					highspeed = 1;
@@ -544,11 +550,11 @@ int main(int argc, char **argv) {
 					send_msg(io);
 					recv_msg(io);
 					if (recv_type(io) == BSL_REP_VER) break;
-					DBG_LOG("æ£€æŸ¥æ³¢ç‰¹ç‡ å¤±è´¥\n");
-					if (i == 4) ERR_EXIT("æ£€æµ‹åˆ°é”™è¯¯çš„å‘½ä»¤æˆ–é”™è¯¯çš„æ¨¡å¼ï¼Œè¯·æŒ‰ç”µæºé”®å’ŒéŸ³é‡+é”®7-10ç§’é‡æ–°å¯åŠ¨æ‰‹æœºã€‚\n");
+					DBG_LOG("¼ì²é²¨ÌØÂÊ Ê§°Ü\n");
+					if (i == 4) ERR_EXIT("¼ì²âµ½´íÎóµÄÃüÁî»ò´íÎóµÄÄ£Ê½£¬Çë°´µçÔ´¼üºÍÒôÁ¿+¼ü7-10ÃëÖØĞÂÆô¶¯ÊÖ»ú¡£\n");
 					usleep(500000);
 				}
-				DBG_LOG("æ£€æŸ¥æ³¢ç‰¹ç‡ FDL1\n");
+				DBG_LOG("¼ì²é²¨ÌØÂÊ FDL1\n");
 
 				DBG_LOG("BSL_REP_VER: ");
 				print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
@@ -565,7 +571,7 @@ int main(int argc, char **argv) {
 				while (1) {
 					send_msg(io);
 					ret = recv_msg(io);
-					if (!ret) ERR_EXIT("å·²è¶…æ—¶\n");
+					if (!ret) ERR_EXIT("ÒÑ³¬Ê±\n");
 					if (recv_type(io) == BSL_CMD_READ_END) break;
 					pdump = (char*)(io->raw_buf + 4);
 					for (i = 0; i < 512; i++)
@@ -577,16 +583,16 @@ int main(int argc, char **argv) {
 						}
 						fputc(chdump, fdump);
 					}
-					DBG_LOG("è½¬å‚¨é¡µæ•° %d\n", ++pagecount);
+					DBG_LOG("×ª´¢Ò³Êı %d\n", ++pagecount);
 				}
 				fclose(fdump);
-				DBG_LOG("è½¬å‚¨å†…å­˜ç«¯\n");
+				DBG_LOG("×ª´¢ÄÚ´æ¶Ë\n");
 				//end
 #endif
 
 				encode_msg(io, BSL_CMD_CONNECT, NULL, 0);
 				if (send_and_check(io)) exit(1);
-				DBG_LOG("è¿æ¥åˆ° FDL1\n");
+				DBG_LOG("Á¬½Óµ½ FDL1\n");
 #if !USE_LIBUSB
 				if (baudrate)
 				{
@@ -594,14 +600,14 @@ int main(int argc, char **argv) {
 					WRITE32_BE(data, baudrate);
 					encode_msg(io, BSL_CMD_CHANGE_BAUD, data, 4);
 					if (!send_and_check(io)) {
-						DBG_LOG("æ”¹å˜æ³¢ç‰¹ç‡ FDL1 åˆ° %d\n", baudrate);
+						DBG_LOG("¸Ä±ä²¨ÌØÂÊ FDL1 µ½ %d\n", baudrate);
 						call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
 					}
 				}
 #endif
 				if (keep_charge) {
 					encode_msg(io, BSL_CMD_KEEP_CHARGE, NULL, 0);
-					if (!send_and_check(io)) DBG_LOG("ä¿æŒå……ç”µ FDL1\n");
+					if (!send_and_check(io)) DBG_LOG("±£³Ö³äµç FDL1\n");
 				}
 				fdl1_loaded = 1;
 			}
@@ -609,7 +615,7 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(str2[1], "exec")) {
 			if (fdl2_executed > 0) {
-				DBG_LOG("FDL2 å·²æ‰§è¡Œ, è·³è¿‡\n");
+				DBG_LOG("FDL2 ÒÑÖ´ĞĞ, Ìø¹ı\n");
 				argc -= 1; argv += 1;
 				continue;
 			} else if (fdl1_loaded > 0) {
@@ -619,29 +625,29 @@ int main(int argc, char **argv) {
 				// Feature phones respond immediately,
 				// but it may take a second for a smartphone to respond.
 				ret = recv_msg_timeout(io, 15000);
-				if (!ret) ERR_EXIT("å·²è¶…æ—¶\n");
+				if (!ret) ERR_EXIT("ÒÑ³¬Ê±\n");
 				ret = recv_type(io);
 				// Is it always bullshit?
 				if (ret == BSL_REP_INCOMPATIBLE_PARTITION)
 					get_Da_Info(io);
 				else if (ret != BSL_REP_ACK)
-					ERR_EXIT("æ„å¤–å“åº” (0x%04x)\n", ret);
-				DBG_LOG("æ‰§è¡Œ FDL2\n");
+					ERR_EXIT("ÒâÍâÏìÓ¦ (0x%04x)\n", ret);
+				DBG_LOG("Ö´ĞĞ FDL2\n");
 				if (Da_Info.bDisableHDLC) {
 					encode_msg(io, BSL_CMD_DISABLE_TRANSCODE, NULL, 0);
 					if (!send_and_check(io)) {
 						io->flags &= ~FLAGS_TRANSCODE;
-						DBG_LOG("ç¦ç”¨è½¬ç \n");
+						DBG_LOG("½ûÓÃ×ªÂë\n");
 					}
 				}
 				if (Da_Info.bSupportRawData == 2) {
 					if (fdl2_executed) {
 						Da_Info.bSupportRawData = 0;
-						DBG_LOG("SPRD4ä¸­ç¦ç”¨WRITE_RAW_DATA\n");
+						DBG_LOG("SPRD4ÖĞ½ûÓÃWRITE_RAW_DATA\n");
 					}
 					else {
 						encode_msg(io, BSL_CMD_WRITE_RAW_DATA_ENABLE, NULL, 0);
-						if (!send_and_check(io)) DBG_LOG("ç¦ç”¨WRITE_RAW_DATA\n");
+						if (!send_and_check(io)) DBG_LOG("½ûÓÃWRITE_RAW_DATA\n");
 					}
 					blk_size = 0xff00;
 					ptable = partition_list(io, fn_partlist, &part_count);
@@ -653,11 +659,11 @@ int main(int argc, char **argv) {
 				else if (Da_Info.dwStorageType == 0x102) {
 					ptable = partition_list(io, fn_partlist, &part_count);
 				}
-				else if (Da_Info.dwStorageType == 0x101) DBG_LOG("å­˜å‚¨æ˜¯nand\n");
+				else if (Da_Info.dwStorageType == 0x101) DBG_LOG("´æ´¢ÊÇnand\n");
 				if (gpt_failed != 1) {
-					if (selected_ab == 2) DBG_LOG("è®¾å¤‡æ­£åœ¨ä½¿ç”¨æ’æ§½b\n");
-					else if (selected_ab == 1) DBG_LOG("è®¾å¤‡æ­£åœ¨ä½¿ç”¨æ’æ§½a\n");
-					else DBG_LOG("è®¾å¤‡æœªä½¿ç”¨VAB\n");
+					if (selected_ab == 2) DBG_LOG("Éè±¸ÕıÔÚÊ¹ÓÃ²å²Ûb\n");
+					else if (selected_ab == 1) DBG_LOG("Éè±¸ÕıÔÚÊ¹ÓÃ²å²Ûa\n");
+					else DBG_LOG("Éè±¸Î´Ê¹ÓÃVAB\n");
 				}
 				if (nand_id == DEFAULT_NAND_ID) {
 					nand_info[0] = (uint8_t)pow(2, nand_id & 3); //page size
@@ -674,12 +680,12 @@ int main(int argc, char **argv) {
 				baudrate = strtoul(str2[2], NULL, 0);
 				if (fdl2_executed) call_SetProperty(io->handle, 0, 100, (LPCVOID)&baudrate);
 			}
-			DBG_LOG("æ³¢ç‰¹ç‡æ˜¯ %u\n", baudrate);
+			DBG_LOG("²¨ÌØÂÊÊÇ %u\n", baudrate);
 			argc -= 2; argv += 2;
 #endif
 		} else if (!strcmp(str2[1], "path")) {
 			if (argcount > 2) strcpy(savepath, str2[2]);
-			DBG_LOG("ä¿å­˜è·¯å¾„å·²è®¾ç½®ä¸º: %s\n", savepath);
+			DBG_LOG("±£´æÂ·¾¶ÒÑÉèÖÃÎª: %s\n", savepath);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "exec_addr")) {
@@ -688,15 +694,15 @@ int main(int argc, char **argv) {
 				exec_addr = strtoul(str2[2], NULL, 0);
 				sprintf(execfile, "custom_exec_no_verify_%x.bin", exec_addr);
 				fi = fopen(execfile, "r");
-				if (fi == NULL) { DBG_LOG("%s ä¸å­˜åœ¨\n", execfile); exec_addr = 0; }
+				if (fi == NULL) { DBG_LOG("%s ²»´æÔÚ\n", execfile); exec_addr = 0; }
 				else fclose(fi);
 			}
-			DBG_LOG("å½“å‰çš„ exec_addr æ˜¯ 0x%x\n", exec_addr);
+			DBG_LOG("µ±Ç°µÄ exec_addr ÊÇ 0x%x\n", exec_addr);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "loadexec")) {
 			const char* fn; char* ch; FILE* fi;
-			if (argcount <= 2) { DBG_LOG("loadexec <æ–‡ä»¶>\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("loadexec <ÎÄ¼ş>\n"); argc -= 2; argv += 2; continue; }
 			if (0 == fdl1_loaded) {
 				strcpy(execfile, str2[2]);
 
@@ -707,10 +713,10 @@ int main(int argc, char **argv) {
 				ret = sscanf(fn, "custom_exec_no_verify_%[0-9a-fA-F]", straddr);
 				exec_addr = strtoul(straddr, NULL, 16);
 				fi = fopen(execfile, "r");
-				if (fi == NULL) { DBG_LOG("%s ä¸å­˜åœ¨\n", execfile); exec_addr = 0; }
+				if (fi == NULL) { DBG_LOG("%s ²»´æÔÚ\n", execfile); exec_addr = 0; }
 				else fclose(fi);
 			}
-			DBG_LOG("å½“å‰çš„ exec_addr æ˜¯ 0x%x\n", exec_addr);
+			DBG_LOG("µ±Ç°µÄ exec_addr ÊÇ 0x%x\n", exec_addr);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "nand_id")) {
@@ -720,39 +726,39 @@ int main(int argc, char **argv) {
 				nand_info[1] = 32 / (uint8_t)pow(2, (nand_id >> 2) & 3); //spare area size
 				nand_info[2] = 64 * (uint8_t)pow(2, (nand_id >> 4) & 3); //block size
 			}
-			DBG_LOG("å½“å‰çš„ nand_id æ˜¯ 0x%x\n", nand_id);
+			DBG_LOG("µ±Ç°µÄ nand_id ÊÇ 0x%x\n", nand_id);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "read_flash")) {
 			const char *fn; uint64_t addr, offset, size;
-			if (argcount <= 5) { DBG_LOG("é”™è¯¯çš„å‘½ä»¤\n"); argc -= 5; argv += 5; continue; }
+			if (argcount <= 5) { DBG_LOG("´íÎóµÄÃüÁî\n"); argc -= 5; argv += 5; continue; }
 
 			addr = str_to_size(str2[2]);
 			offset = str_to_size(str2[3]);
 			size = str_to_size(str2[4]);
 			fn = str2[5];
 			if ((addr | size | offset | (addr + offset + size)) >> 32)
-				{ DBG_LOG("å·²è¾¾åˆ°32ä½é™åˆ¶\n"); argc -= 5; argv += 5; continue; }
+				{ DBG_LOG("ÒÑ´ïµ½32Î»ÏŞÖÆ\n"); argc -= 5; argv += 5; continue; }
 			dump_flash(io, addr, offset, size, fn,
 					blk_size ? blk_size : 1024);
 			argc -= 5; argv += 5;
 
 		} else if (!strcmp(str2[1], "read_mem")) {
 			const char *fn; uint64_t addr, size;
-			if (argcount <= 4) { DBG_LOG("é”™è¯¯çš„å‘½ä»¤\n"); argc -= 4; argv += 4; continue; }
+			if (argcount <= 4) { DBG_LOG("´íÎóµÄÃüÁî\n"); argc -= 4; argv += 4; continue; }
 
 			addr = str_to_size(str2[2]);
 			size = str_to_size(str2[3]);
 			fn = str2[4];
 			if ((addr | size | (addr + size)) >> 32)
-				{ DBG_LOG("å·²è¾¾åˆ°32ä½é™åˆ¶\n"); argc -= 4; argv += 4; continue; }
+				{ DBG_LOG("ÒÑ´ïµ½32Î»ÏŞÖÆ\n"); argc -= 4; argv += 4; continue; }
 			dump_mem(io, addr, size, fn,
 					blk_size ? blk_size : 1024);
 			argc -= 4; argv += 4;
 
 		} else if (!strcmp(str2[1], "part_size")) {
 			const char *name;
-			if (argcount <= 2) { DBG_LOG("é”™è¯¯çš„å‘½ä»¤\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("´íÎóµÄÃüÁî\n"); argc -= 2; argv += 2; continue; }
 
 			name = str2[2];
 			if (selected_ab < 0) select_ab(io);
@@ -773,7 +779,7 @@ int main(int argc, char **argv) {
 			uint64_t realsize = 0;
 			char name_ab[36];
 			int verbose = io->verbose;
-			if (argcount <= 5) { DBG_LOG("read_part <åˆ†åŒºåç§°> <åç§»é‡> <å¤§å°> <æ–‡ä»¶è·¯å¾„>\n(è¯»å–nandä¸Šçš„ubi) read_part system 0 ubi40m system.bin\n"); argc -= 5; argv += 5; continue; }
+			if (argcount <= 5) { DBG_LOG("read_part <·ÖÇøÃû³Æ> <Æ«ÒÆÁ¿> <´óĞ¡> <ÎÄ¼şÂ·¾¶>\n(¶ÁÈ¡nandÉÏµÄubi) read_part system 0 ubi40m system.bin\n"); argc -= 5; argv += 5; continue; }
 
 			name = str2[2];
 			if (selected_ab < 0) select_ab(io);
@@ -786,7 +792,7 @@ int main(int argc, char **argv) {
 					name = name_ab;
 				}
 				if (!realsize) {
-					DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n");
+					DBG_LOG("·ÖÇø²»´æÔÚ\n");
 					io->verbose = verbose;
 					argc -= 5; argv += 5;
 					continue;
@@ -797,7 +803,7 @@ int main(int argc, char **argv) {
 			if (0xffffffff == size) size = find_partition_size(io, name);
 			fn = str2[5];
 			if (offset + size < offset)
-				{ DBG_LOG("å·²è¾¾åˆ°64ä½é™åˆ¶\n"); argc -= 5; argv += 5; continue; }
+				{ DBG_LOG("ÒÑ´ïµ½64Î»ÏŞÖÆ\n"); argc -= 5; argv += 5; continue; }
 			io->verbose = verbose;
 			dump_partition(io, name, offset, size, fn, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 5; argv += 5;
@@ -806,14 +812,14 @@ int main(int argc, char **argv) {
 			uint64_t realsize = 0;
 			const char* name = str2[2];
 			char name_ab[36];
-			if (argcount <= 2) { DBG_LOG("r all/all_lite/åˆ†åŒºåç§°/åˆ†åŒºid\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("r all/all_lite/·ÖÇøÃû³Æ/·ÖÇøid\n"); argc -= 2; argv += 2; continue; }
 			if (!memcmp(name, "splloader", 9)) {
 				realsize = 256 * 1024;
 			}
 			else if (isdigit(name[0])) {
 				if (gpt_failed == 1) ptable = partition_list(io, fn_partlist, &part_count);
 				i = atoi(name);
-				if (i > part_count) { DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n"); argc -= 2; argv += 2; continue; }
+				if (i > part_count) { DBG_LOG("·ÖÇø²»´æÔÚ\n"); argc -= 2; argv += 2; continue; }
 				if (i == 0) {
 					name = "splloader";
 					realsize = 256 * 1024;
@@ -825,7 +831,7 @@ int main(int argc, char **argv) {
 			}
 			else if (!strcmp(name, "preset_modem")) {
 				if (gpt_failed == 1) ptable = partition_list(io, fn_partlist, &part_count);
-				if (!part_count) { DBG_LOG("åˆ†åŒºè¡¨ä¸å¯ç”¨\n"); argc -= 2; argv += 2; continue; }
+				if (!part_count) { DBG_LOG("·ÖÇø±í²»¿ÉÓÃ\n"); argc -= 2; argv += 2; continue; }
 				for (i = 0; i < part_count; i++)
 					if (0 == strncmp("l_", (*(ptable + i)).name, 2) || 0 == strncmp("nr_", (*(ptable + i)).name, 3)) {
 						char dfile[40];
@@ -837,7 +843,7 @@ int main(int argc, char **argv) {
 			}
 			else if (!strcmp(name, "all")) {
 				if (gpt_failed == 1) ptable = partition_list(io, fn_partlist, &part_count);
-				if (!part_count) { DBG_LOG("åˆ†åŒºè¡¨ä¸å¯ç”¨\n"); argc -= 2; argv += 2; continue; }
+				if (!part_count) { DBG_LOG("·ÖÇø±í²»¿ÉÓÃ\n"); argc -= 2; argv += 2; continue; }
 				dump_partition(io, "splloader", 0, 256 * 1024, "splloader.bin", blk_size ? blk_size : DEFAULT_BLK_SIZE);
 				for (i = 0; i < part_count; i++)
 				{
@@ -853,7 +859,7 @@ int main(int argc, char **argv) {
 			}
 			else if (!strcmp(name, "all_lite")) {
 				if (gpt_failed == 1) ptable = partition_list(io, fn_partlist, &part_count);
-				if (!part_count) { DBG_LOG("åˆ†åŒºè¡¨ä¸å¯ç”¨\n"); argc -= 2; argv += 2; continue; }
+				if (!part_count) { DBG_LOG("·ÖÇø±í²»¿ÉÓÃ\n"); argc -= 2; argv += 2; continue; }
 				dump_partition(io, "splloader", 0, 256 * 1024, "splloader.bin", blk_size ? blk_size : DEFAULT_BLK_SIZE);
 				for (i = 0; i < part_count; i++)
 				{
@@ -866,7 +872,7 @@ int main(int argc, char **argv) {
 					snprintf(dfile, sizeof(dfile), "%s.bin", (*(ptable + i)).name);
 					dump_partition(io, (*(ptable + i)).name, 0, (*(ptable + i)).size, dfile, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 				}
-				if (selected_ab == 2) DBG_LOG("å½“è®¾å¤‡ä½äºæ’æ§½Bä¸­æ—¶ï¼Œæ’æ§½Aä¸­çš„ä¸€äº›åˆ†åŒºä»åœ¨ä½¿ç”¨ä¸­ï¼›å› æ­¤ï¼Œæ‰€æœ‰åˆ†åŒºéƒ½è¢«è½¬å‚¨ã€‚\n");
+				if (selected_ab == 2) DBG_LOG("µ±Éè±¸Î»ÓÚ²å²ÛBÖĞÊ±£¬²å²ÛAÖĞµÄÒ»Ğ©·ÖÇøÈÔÔÚÊ¹ÓÃÖĞ£»Òò´Ë£¬ËùÓĞ·ÖÇø¶¼±»×ª´¢¡£\n");
 				argc -= 2; argv += 2;
 				continue;
 			}
@@ -883,7 +889,7 @@ int main(int argc, char **argv) {
 						break;
 					}
 				}
-				if (i == part_count) { DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n"); argc -= 2; argv += 2; continue; }
+				if (i == part_count) { DBG_LOG("·ÖÇø²»´æÔÚ\n"); argc -= 2; argv += 2; continue; }
 			}
 			else
 			{
@@ -896,7 +902,7 @@ int main(int argc, char **argv) {
 						name = name_ab;
 					}
 					if (!realsize) {
-						DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n");
+						DBG_LOG("·ÖÇø²»´æÔÚ\n");
 						argc -= 2; argv += 2;
 						continue;
 					}
@@ -911,26 +917,26 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(str2[1], "read_parts")) {
 			const char* fn; FILE* fi;
-			if (argcount <= 2) { DBG_LOG("read_parts <åˆ†åŒºè¡¨æ–‡ä»¶>\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("read_parts <·ÖÇø±íÎÄ¼ş>\n"); argc -= 2; argv += 2; continue; }
 			fn = str2[2];
 			fi = fopen(fn, "r");
-			if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨\n"); argc -= 2; argv += 2; continue; }
+			if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ\n"); argc -= 2; argv += 2; continue; }
 			else fclose(fi);
 			dump_partitions(io, fn, nand_info, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "partition_list")) {
-			if (argcount <= 2) { DBG_LOG("partition_list <åˆ†åŒºè¡¨ä¿å­˜è·¯å¾„>\n"); argc -= 2; argv += 2; continue; }
-			if (gpt_failed < 1) { DBG_LOG("partition_list ä¸åº”è¿è¡Œä¸¤æ¬¡\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("partition_list <·ÖÇø±í±£´æÂ·¾¶>\n"); argc -= 2; argv += 2; continue; }
+			if (gpt_failed < 1) { DBG_LOG("partition_list ²»Ó¦ÔËĞĞÁ½´Î\n"); argc -= 2; argv += 2; continue; }
 			ptable = partition_list(io, str2[2], &part_count);
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "repartition")) {
 			const char *fn;FILE *fi;
-			if (argcount <= 2) { DBG_LOG("repartition <xmlåˆ†åŒºè¡¨æ–‡ä»¶>\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("repartition <xml·ÖÇø±íÎÄ¼ş>\n"); argc -= 2; argv += 2; continue; }
 			fn = str2[2];
 			fi = fopen(fn, "r");
-			if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨\n"); argc -= 2; argv += 2; continue; }
+			if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ\n"); argc -= 2; argv += 2; continue; }
 			else fclose(fi);
 			if (skip_confirm) repartition(io, str2[2]);
 			else if (check_confirm("repartition")) repartition(io, str2[2]);
@@ -941,13 +947,13 @@ int main(int argc, char **argv) {
 			const char* name = str2[2];
 			char name_ab[36];
 			int verbose = io->verbose;
-			if (argcount <= 2) { DBG_LOG("erase_part åˆ†åŒºåç§°/åˆ†åŒºid\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("erase_part ·ÖÇøÃû³Æ/·ÖÇøid\n"); argc -= 2; argv += 2; continue; }
 			if (selected_ab < 0) select_ab(io);
 			i = -1;
 			if (isdigit(name[0])) {
 				if (part_count) i = atoi(name);
-				else { DBG_LOG("gptè¡¨ä¸ºç©º\n"); argc -= 2; argv += 2; continue; }
-				if (i > part_count) { DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n"); argc -= 2; argv += 2; continue; }
+				else { DBG_LOG("gpt±íÎª¿Õ\n"); argc -= 2; argv += 2; continue; }
+				if (i > part_count) { DBG_LOG("·ÖÇø²»´æÔÚ\n"); argc -= 2; argv += 2; continue; }
 			}
 			if (!skip_confirm)
 				if (!check_confirm("erase partition"))
@@ -967,7 +973,7 @@ int main(int argc, char **argv) {
 						name = name_ab;
 					}
 					if (!realsize) {
-						DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n");
+						DBG_LOG("·ÖÇø²»´æÔÚ\n");
 						io->verbose = verbose;
 						argc -= 2; argv += 2;
 						continue;
@@ -984,17 +990,17 @@ int main(int argc, char **argv) {
 			const char* name = str2[2];
 			char name_ab[36];
 			int verbose = io->verbose;
-			if (argcount <= 3) { DBG_LOG("write_part åˆ†åŒºåç§°/åˆ†åŒºid <æ–‡ä»¶>\n"); argc -= 3; argv += 3; continue; }
+			if (argcount <= 3) { DBG_LOG("write_part ·ÖÇøÃû³Æ/·ÖÇøid <ÎÄ¼ş>\n"); argc -= 3; argv += 3; continue; }
 			fn = str2[3];
 			fi = fopen(fn, "r");
-			if (fi == NULL) { DBG_LOG("æ–‡ä»¶ä¸å­˜åœ¨\n"); argc -= 3; argv += 3; continue; }
+			if (fi == NULL) { DBG_LOG("ÎÄ¼ş²»´æÔÚ\n"); argc -= 3; argv += 3; continue; }
 			else fclose(fi);
 			if (selected_ab < 0) select_ab(io);
 			i = -1;
 			if (isdigit(name[0])) {
 				if (part_count) i = atoi(name);
-				else { DBG_LOG("gptè¡¨ä¸ºç©º\n"); argc -= 3; argv += 3; continue; }
-				if (i > part_count) { DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n"); argc -= 3; argv += 3; continue; }
+				else { DBG_LOG("gpt±íÎª¿Õ\n"); argc -= 3; argv += 3; continue; }
+				if (i > part_count) { DBG_LOG("·ÖÇø²»´æÔÚ\n"); argc -= 3; argv += 3; continue; }
 			}
 			if (!skip_confirm)
 				if (!check_confirm("write partition"))
@@ -1017,7 +1023,7 @@ int main(int argc, char **argv) {
 						name = name_ab;
 					}
 					if (!realsize) {
-						DBG_LOG("åˆ†åŒºä¸å­˜åœ¨\n");
+						DBG_LOG("·ÖÇø²»´æÔÚ\n");
 						io->verbose = verbose;
 						argc -= 3; argv += 3;
 						continue;
@@ -1030,7 +1036,7 @@ int main(int argc, char **argv) {
 			argc -= 3; argv += 3;
 
 		} else if (!strcmp(str2[1], "write_parts")) {
-			if (argcount <= 2) { DBG_LOG("write_parts <ä¿å­˜è·¯å¾„>\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("write_parts <±£´æÂ·¾¶>\n"); argc -= 2; argv += 2; continue; }
 			if (skip_confirm) load_partitions(io, str2[2], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			else if (check_confirm("write all partitions")) load_partitions(io, str2[2], blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			argc -= 2; argv += 2;
@@ -1040,7 +1046,7 @@ int main(int argc, char **argv) {
 			argc -= 1; argv += 1;
 
 		} else if (!strcmp(str2[1], "blk_size") || !strcmp(str2[1], "bs")) {
-			if (argcount <= 2) { DBG_LOG("blk_size <byte>\n\tæœ€å¤§65535\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("blk_size <byte>\n\t×î´ó65535\n"); argc -= 2; argv += 2; continue; }
 			blk_size = strtol(str2[2], NULL, 0);
 			blk_size = blk_size < 0 ? 0 :
 					blk_size > 0xffff ? 0xffff : blk_size;
@@ -1056,7 +1062,7 @@ int main(int argc, char **argv) {
 			if (atoi(str2[2])) dm_enable(io, blk_size ? blk_size : DEFAULT_BLK_SIZE);
 			else
 			{
-				DBG_LOG("è­¦å‘Šï¼šç¦ç”¨dm-verityéœ€è¦ç¦ç”¨å†™å…¥éªŒè¯FDL2\n");
+				DBG_LOG("¾¯¸æ£º½ûÓÃdm-verityĞèÒª½ûÓÃĞ´ÈëÑéÖ¤FDL2\n");
 				if (!skip_confirm)
 					if (!check_confirm("disable dm-verity"))
 					{
@@ -1081,9 +1087,9 @@ int main(int argc, char **argv) {
 			encode_msg(io, BSL_CMD_READ_CHIP_UID, NULL, 0);
 			send_msg(io);
 			ret = recv_msg(io);
-			if (!ret) ERR_EXIT("å·²è¶…æ—¶\n");
+			if (!ret) ERR_EXIT("ÒÑ³¬Ê±\n");
 			if ((ret = recv_type(io)) != BSL_REP_READ_CHIP_UID)
-				{ DBG_LOG("æ„å¤–å“åº” (0x%04x)\n", ret); argc -= 1; argv += 1; continue; }
+				{ DBG_LOG("ÒâÍâÏìÓ¦ (0x%04x)\n", ret); argc -= 1; argv += 1; continue; }
 
 			DBG_LOG("BSL_REP_READ_CHIP_UID: ");
 			print_string(stderr, io->raw_buf + 4, READ16_BE(io->raw_buf + 2));
@@ -1096,9 +1102,9 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(str2[1], "transcode")) {
 			unsigned a, f;
-			if (argcount <= 2) { DBG_LOG("é”™è¯¯çš„æŒ‡ä»¤\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("´íÎóµÄÖ¸Áî\n"); argc -= 2; argv += 2; continue; }
 			a = atoi(str2[2]);
-			if (a >> 1) { DBG_LOG("é”™è¯¯çš„æŒ‡ä»¤\n"); argc -= 2; argv += 2; continue; }
+			if (a >> 1) { DBG_LOG("´íÎóµÄÖ¸Áî\n"); argc -= 2; argv += 2; continue; }
 			f = (io->flags & ~FLAGS_TRANSCODE);
 			io->flags = f | (a ? FLAGS_TRANSCODE : 0);
 			argc -= 2; argv += 2;
@@ -1109,7 +1115,7 @@ int main(int argc, char **argv) {
 			argc -= 2; argv += 2;
 
 		} else if (!strcmp(str2[1], "timeout")) {
-			if (argcount <= 2) { DBG_LOG("timeout <æ¯«ç§’>\n"); argc -= 2; argv += 2; continue; }
+			if (argcount <= 2) { DBG_LOG("timeout <ºÁÃë>\n"); argc -= 2; argv += 2; continue; }
 			io->timeout = atoi(str2[2]);
 			argc -= 2; argv += 2;
 
@@ -1120,7 +1126,7 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(str2[1], "reset")) {
 			if (!fdl1_loaded) {
-				DBG_LOG("FDLæœªå°±ç»ª\n");
+				DBG_LOG("FDLÎ´¾ÍĞ÷\n");
 				argc -= 1; argv += 1;
 				continue;
 			}
@@ -1129,7 +1135,7 @@ int main(int argc, char **argv) {
 
 		} else if (!strcmp(str2[1], "poweroff")) {
 			if (!fdl1_loaded) {
-				DBG_LOG("FDLæœªå°±ç»ª\n");
+				DBG_LOG("FDLÎ´¾ÍĞ÷\n");
 				argc -= 1; argv += 1;
 				continue;
 			}
@@ -1150,7 +1156,7 @@ int main(int argc, char **argv) {
 				free(str2[i]);
 		free(str2);
 		if (m_bOpened == -1) {
-			DBG_LOG("è®¾å¤‡æ–­å¼€, é€€å‡ºç¨‹åº...\n");
+			DBG_LOG("Éè±¸¶Ï¿ª, ÍË³ö³ÌĞò...\n");
 			break;
 		}
 	}
