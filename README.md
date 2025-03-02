@@ -209,7 +209,7 @@ termux-usb -r /dev/bus/usb/xxx/xxx
 ```
 允许访问目标设备
 
-7. 运行 SPD_SUMP
+7. 运行 SPD_DUMP
 
 ```
 termux-usb -e './spd_dump --usb-fd' /dev/bus/usb/xxx/xxx
